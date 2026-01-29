@@ -1,18 +1,16 @@
 import Stripe from "stripe";
 
 /* ================================
-   Stripe Initialization (NON-NULL)
+   Stripe Initialization (Optional)
 ================================ */
 
 const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
 
-if (!stripeSecretKey) {
-  throw new Error("STRIPE_SECRET_KEY is not set");
-}
-
-export const stripe = new Stripe(stripeSecretKey, {
-  apiVersion: "2023-10-16",
-});
+export const stripe = stripeSecretKey
+  ? new Stripe(stripeSecretKey, {
+      apiVersion: "2023-10-16",
+    })
+  : null;
 
 /* ================================
    Plans
@@ -34,7 +32,7 @@ export const PLANS = {
     name: "Pro",
     scansPerMonth: Infinity,
     price: 2.99,
-    priceId: process.env.STRIPE_PRICE_ID!,
+    priceId: process.env.STRIPE_PRICE_ID || "",
     features: [
       "Unlimited resume scans",
       "Detailed ATS analysis",
@@ -55,6 +53,7 @@ export async function createCustomer(
   email: string,
   clerkId: string
 ): Promise<Stripe.Customer> {
+  if (!stripe) throw new Error("Stripe is not configured");
   return stripe.customers.create({
     email,
     metadata: {
@@ -69,6 +68,7 @@ export async function createCheckoutSession(
   successUrl: string,
   cancelUrl: string
 ): Promise<Stripe.Checkout.Session> {
+  if (!stripe) throw new Error("Stripe is not configured");
   return stripe.checkout.sessions.create({
     customer: customerId,
     payment_method_types: ["card"],
@@ -93,6 +93,7 @@ export async function createBillingPortalSession(
   customerId: string,
   returnUrl: string
 ): Promise<Stripe.BillingPortal.Session> {
+  if (!stripe) throw new Error("Stripe is not configured");
   return stripe.billingPortal.sessions.create({
     customer: customerId,
     return_url: returnUrl,
@@ -102,6 +103,7 @@ export async function createBillingPortalSession(
 export async function cancelSubscription(
   subscriptionId: string
 ): Promise<Stripe.Subscription> {
+  if (!stripe) throw new Error("Stripe is not configured");
   return stripe.subscriptions.update(subscriptionId, {
     cancel_at_period_end: true,
   });
@@ -110,5 +112,6 @@ export async function cancelSubscription(
 export async function getSubscription(
   subscriptionId: string
 ): Promise<Stripe.Subscription> {
+  if (!stripe) throw new Error("Stripe is not configured");
   return stripe.subscriptions.retrieve(subscriptionId);
 }

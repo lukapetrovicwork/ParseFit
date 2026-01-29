@@ -7,6 +7,10 @@ import Stripe from 'stripe';
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
+  if (!stripe) {
+    return NextResponse.json({ error: 'Stripe is not configured' }, { status: 500 });
+  }
+
   const body = await request.text();
   const signature = headers().get('stripe-signature');
 
