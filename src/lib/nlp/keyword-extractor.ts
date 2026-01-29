@@ -88,6 +88,15 @@ const TECHNOLOGIES: Set<string> = new Set([
   'version control', 'branching strategy', 'gitflow', 'trunk based development',
 ]);
 
+// Check if text contains a whole word (not partial match)
+function containsWholeWord(text: string, word: string): boolean {
+  // Escape special regex characters
+  const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  // Use word boundary matching - handles punctuation and spaces
+  const regex = new RegExp(`(?:^|[\\s,;:.!?()\\[\\]{}/"'\\-])${escaped}(?:[\\s,;:.!?()\\[\\]{}/"'\\-]|$)`, 'i');
+  return regex.test(text);
+}
+
 export function extractKeywords(text: string): {
   hardSkills: string[];
   softSkills: string[];
@@ -124,25 +133,25 @@ export function extractKeywords(text: string): {
   }
 
   for (const skill of HARD_SKILLS) {
-    if (normalizedText.includes(skill)) {
+    if (containsWholeWord(normalizedText, skill)) {
       foundHardSkills.add(skill);
     }
   }
 
   for (const skill of SOFT_SKILLS) {
-    if (normalizedText.includes(skill)) {
+    if (containsWholeWord(normalizedText, skill)) {
       foundSoftSkills.add(skill);
     }
   }
 
   for (const tool of TOOLS) {
-    if (normalizedText.includes(tool)) {
+    if (containsWholeWord(normalizedText, tool)) {
       foundTools.add(tool);
     }
   }
 
   for (const tech of TECHNOLOGIES) {
-    if (normalizedText.includes(tech)) {
+    if (containsWholeWord(normalizedText, tech)) {
       foundTechnologies.add(tech);
     }
   }
