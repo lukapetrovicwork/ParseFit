@@ -1,0 +1,68 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String   @id @default(cuid())
+  clerkId           String   @unique
+  email             String   @unique
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  subscriptionTier  SubscriptionTier @default(FREE)
+  stripeCustomerId  String?
+  stripeSubscriptionId String?
+  subscriptionStatus SubscriptionStatus @default(INACTIVE)
+
+  scans             Scan[]
+
+  @@index([clerkId])
+  @@index([email])
+}
+
+model Scan {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  fileName          String
+  fileType          String
+  resumeText        String   @db.Text
+  jobDescription    String   @db.Text
+
+  overallScore      Int
+  keywordScore      Int
+  formattingScore   Int
+  sectionScore      Int
+  similarityScore   Float
+
+  missingKeywords   String[] @default([])
+  foundKeywords     String[] @default([])
+  formattingIssues  Json     @default("[]")
+  sectionAnalysis   Json     @default("{}")
+  bulletAnalysis    Json     @default("[]")
+  suggestions       Json     @default("[]")
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+enum SubscriptionTier {
+  FREE
+  PRO
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  INACTIVE
+  CANCELED
+  PAST_DUE
+}
