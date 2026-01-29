@@ -6,6 +6,8 @@ import { parseJobDescription } from '@/lib/nlp';
 import { calculateATSScore } from '@/lib/scoring';
 import { ALLOWED_FILE_TYPES, MAX_FILE_SIZE, FREE_SCAN_LIMIT } from '@/lib/utils';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     const { userId } = await auth();
