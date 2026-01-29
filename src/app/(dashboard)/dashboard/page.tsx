@@ -133,7 +133,8 @@ export default function DashboardPage() {
     );
   }
 
-  const scansUsedPercentage = data.subscription.scansLimit === Infinity
+  const isPro = data.subscription.tier === 'PRO';
+  const scansUsedPercentage = isPro
     ? 0
     : (data.subscription.scansUsed / data.subscription.scansLimit) * 100;
 
@@ -163,16 +164,16 @@ export default function DashboardPage() {
           <CardContent>
             <div className="text-2xl font-bold">
               {data.subscription.scansUsed}
-              {data.subscription.scansLimit !== Infinity && (
+              {!isPro && (
                 <span className="text-sm font-normal text-gray-500">
                   /{data.subscription.scansLimit}
                 </span>
               )}
             </div>
-            {data.subscription.scansLimit !== Infinity && (
+            {!isPro && (
               <Progress value={scansUsedPercentage} className="mt-2 h-1" />
             )}
-            {data.subscription.tier === 'FREE' && (
+            {!isPro && (
               <p className="mt-2 text-xs text-gray-500">
                 <Link href="/settings" className="text-primary hover:underline">
                   Upgrade to Pro

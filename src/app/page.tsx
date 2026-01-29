@@ -159,7 +159,7 @@ export default function HomePage() {
             </h2>
             <p className="mt-4 text-lg text-gray-600">
               Join thousands of job seekers who have improved their resumes with
-              ATS Scanner.
+              ParseFit.
             </p>
 
             <div className="mt-8">
@@ -187,7 +187,7 @@ export default function HomePage() {
 
       <footer className="border-t bg-white px-4 py-8 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-6xl text-center text-sm text-gray-500">
-          <p>&copy; {new Date().getFullYear()} ATS Scanner. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} ParseFit. All rights reserved.</p>
         </div>
       </footer>
     </div>

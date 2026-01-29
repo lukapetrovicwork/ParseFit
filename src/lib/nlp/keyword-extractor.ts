@@ -32,7 +32,7 @@ const HARD_SKILLS: Set<string> = new Set([
   'selenium', 'puppeteer', 'playwright',
   'webpack', 'vite', 'rollup', 'parcel', 'babel', 'esbuild',
   'oauth', 'jwt', 'authentication', 'authorization', 'security',
-  'networking', 'tcp/ip', 'http', 'https', 'ssl', 'tls',
+  'networking', 'tcp/ip', 'ssl', 'tls',
   'load balancing', 'nginx', 'apache', 'cdn',
 ]);
 
