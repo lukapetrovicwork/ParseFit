@@ -35,21 +35,45 @@ export async function POST(request: NextRequest) {
     });
 
     if (!dbUser) {
-      dbUser = await prisma.user.create({
-        data: {
-          clerkId: userId,
-          email: user.emailAddresses[0]?.emailAddress || '',
-        },
-        include: {
-          scans: {
-            where: {
-              createdAt: {
-                gte: new Date(new Date().setDate(1)),
+      // Check if user exists with same email (might have old clerkId from dev mode)
+      const userEmail = user.emailAddresses[0]?.emailAddress || '';
+      const existingUserByEmail = await prisma.user.findUnique({
+        where: { email: userEmail },
+      });
+
+      if (existingUserByEmail) {
+        // Update the clerkId to the new production one
+        dbUser = await prisma.user.update({
+          where: { email: userEmail },
+          data: { clerkId: userId },
+          include: {
+            scans: {
+              where: {
+                createdAt: {
+                  gte: new Date(new Date().setDate(1)),
+                },
               },
             },
           },
-        },
-      });
+        });
+      } else {
+        // Create new user
+        dbUser = await prisma.user.create({
+          data: {
+            clerkId: userId,
+            email: userEmail,
+          },
+          include: {
+            scans: {
+              where: {
+                createdAt: {
+                  gte: new Date(new Date().setDate(1)),
+                },
+              },
+            },
+          },
+        });
+      }
     }
 
     if (dbUser.subscriptionTier === 'FREE' && dbUser.scans.length >= FREE_SCAN_LIMIT) {

@@ -14,12 +14,13 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
   try {
     const { userId } = await auth();
+    const user = await currentUser();
 
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const dbUser = await prisma.user.findUnique({
+    let dbUser = await prisma.user.findUnique({
       where: { clerkId: userId },
       include: {
         scans: {
@@ -31,6 +32,39 @@ export async function GET(request: NextRequest) {
         },
       },
     });
+
+    // If not found by clerkId, check by email and update clerkId
+    if (!dbUser && user) {
+      const userEmail = user.emailAddresses[0]?.emailAddress || '';
+      const existingUserByEmail = await prisma.user.findUnique({
+        where: { email: userEmail },
+        include: {
+          scans: {
+            where: {
+              createdAt: {
+                gte: new Date(new Date().setDate(1)),
+              },
+            },
+          },
+        },
+      });
+
+      if (existingUserByEmail) {
+        dbUser = await prisma.user.update({
+          where: { email: userEmail },
+          data: { clerkId: userId },
+          include: {
+            scans: {
+              where: {
+                createdAt: {
+                  gte: new Date(new Date().setDate(1)),
+                },
+              },
+            },
+          },
+        });
+      }
+    }
 
     if (!dbUser) {
       return NextResponse.json({
@@ -74,12 +108,24 @@ export async function POST(request: NextRequest) {
     });
 
     if (!dbUser) {
-      dbUser = await prisma.user.create({
-        data: {
-          clerkId: userId,
-          email: user.emailAddresses[0]?.emailAddress || '',
-        },
+      const userEmail = user.emailAddresses[0]?.emailAddress || '';
+      const existingUserByEmail = await prisma.user.findUnique({
+        where: { email: userEmail },
       });
+
+      if (existingUserByEmail) {
+        dbUser = await prisma.user.update({
+          where: { email: userEmail },
+          data: { clerkId: userId },
+        });
+      } else {
+        dbUser = await prisma.user.create({
+          data: {
+            clerkId: userId,
+            email: userEmail,
+          },
+        });
+      }
     }
 
     if (action === 'checkout') {
