@@ -59,6 +59,7 @@ export async function POST(request: NextRequest) {
         break;
       }
 
+      case 'customer.subscription.created':
       case 'customer.subscription.updated': {
         const subscription = event.data.object as Stripe.Subscription;
         const customerId = typeof subscription.customer === 'string'
@@ -86,6 +87,7 @@ export async function POST(request: NextRequest) {
           data: {
             subscriptionStatus: status,
             subscriptionTier: subscription.status === 'active' ? 'PRO' : 'FREE',
+            stripeSubscriptionId: subscription.id,
           },
         });
         break;
@@ -108,6 +110,7 @@ export async function POST(request: NextRequest) {
         break;
       }
 
+      case 'invoice.paid':
       case 'invoice.payment_succeeded': {
         const invoice = event.data.object as Stripe.Invoice;
 
