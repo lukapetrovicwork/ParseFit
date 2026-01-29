@@ -7,7 +7,7 @@ import './globals.css';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'ATS Resume Scanner - Optimize Your Resume for ATS',
+  title: 'ParseFit - Optimize Your Resume for ATS',
   description:
     'Get your resume past Applicant Tracking Systems. Upload your resume and job description to receive instant ATS compatibility scoring, missing keywords, and actionable improvement suggestions.',
   keywords: [
@@ -18,6 +18,7 @@ export const metadata: Metadata = {
     'job application',
     'keyword matching',
     'resume analysis',
+    'ParseFit',
   ],
 };
 
