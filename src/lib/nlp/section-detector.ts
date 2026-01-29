@@ -9,6 +9,9 @@ const SECTION_PATTERNS: Record<SectionType, RegExp[]> = {
     /^executive\s+summary/i,
     /^personal\s+statement/i,
     /^overview/i,
+    /summary$/i,
+    /profile$/i,
+    /objective$/i,
   ],
   experience: [
     /^(work\s+)?experience/i,
@@ -18,6 +21,10 @@ const SECTION_PATTERNS: Record<SectionType, RegExp[]> = {
     /^career\s+history/i,
     /^relevant\s+experience/i,
     /^professional\s+background/i,
+    /experience$/i,
+    /^experience$/i,
+    /work\s+experience/i,
+    /professional\s+experience/i,
   ],
   education: [
     /^education/i,
@@ -26,6 +33,9 @@ const SECTION_PATTERNS: Record<SectionType, RegExp[]> = {
     /^qualifications/i,
     /^academic\s+qualifications/i,
     /^degrees/i,
+    /education$/i,
+    /^education$/i,
+    /educational\s+background/i,
   ],
   skills: [
     /^(technical\s+)?skills/i,
@@ -37,6 +47,10 @@ const SECTION_PATTERNS: Record<SectionType, RegExp[]> = {
     /^technical\s+proficiencies/i,
     /^key\s+skills/i,
     /^skill\s+set/i,
+    /skills$/i,
+    /^skills$/i,
+    /technical\s+skills/i,
+    /core\s+skills/i,
   ],
   projects: [
     /^projects/i,
@@ -153,8 +167,50 @@ export function detectSections(text: string): ResumeSection[] {
 }
 
 function identifySectionHeader(line: string): SectionType {
-  const cleanLine = line.replace(/[:\-_•|]/g, '').trim();
+  // Remove common prefixes, punctuation, and clean the line
+  const cleanLine = line
+    .replace(/^[\d\.\)\-\•\*\s]+/, '') // Remove leading numbers, bullets, etc.
+    .replace(/[:\-_•|]/g, '')
+    .trim()
+    .toLowerCase();
 
+  // Direct keyword matching for common section names
+  const directMatches: Record<string, SectionType> = {
+    'experience': 'experience',
+    'work experience': 'experience',
+    'professional experience': 'experience',
+    'employment': 'experience',
+    'employment history': 'experience',
+    'education': 'education',
+    'educational background': 'education',
+    'academic background': 'education',
+    'skills': 'skills',
+    'technical skills': 'skills',
+    'core skills': 'skills',
+    'key skills': 'skills',
+    'competencies': 'skills',
+    'summary': 'summary',
+    'professional summary': 'summary',
+    'profile': 'summary',
+    'objective': 'summary',
+    'career objective': 'summary',
+    'projects': 'projects',
+    'certifications': 'certifications',
+    'certificates': 'certifications',
+    'awards': 'awards',
+    'honors': 'awards',
+    'publications': 'publications',
+    'languages': 'languages',
+    'interests': 'interests',
+    'hobbies': 'interests',
+    'references': 'references',
+  };
+
+  if (directMatches[cleanLine]) {
+    return directMatches[cleanLine];
+  }
+
+  // Pattern matching for more complex variations
   for (const [sectionType, patterns] of Object.entries(SECTION_PATTERNS)) {
     if (sectionType === 'unknown') continue;
 
@@ -174,11 +230,12 @@ function isSectionHeader(line: string, allLines: string[], index: number): boole
   const words = line.split(/\s+/);
   if (words.length > 6) return false;
 
+  const cleanLine = line.replace(/[:\-_•|]/g, '').trim();
   const isUpperCase = line === line.toUpperCase() && /[A-Z]/.test(line);
-
+  const isTitleCase = /^[A-Z][a-z]*(\s+[A-Z][a-z]*)*$/.test(cleanLine);
   const hasColon = line.endsWith(':');
-
   const isShortLine = line.length < 40;
+  const isVeryShortLine = line.length < 25;
 
   const nextLine = allLines[index + 1]?.trim() || '';
   const isSeparator = /^[-=_]{3,}$/.test(nextLine) || nextLine === '';
@@ -186,13 +243,19 @@ function isSectionHeader(line: string, allLines: string[], index: number): boole
   const prevLine = allLines[index - 1]?.trim() || '';
   const hasBlankBefore = prevLine === '';
 
+  // If it's a very short line (1-3 words) that matches a section pattern, it's likely a header
+  if (words.length <= 3 && isVeryShortLine) {
+    return true;
+  }
+
   const score = (isUpperCase ? 2 : 0) +
+    (isTitleCase ? 1 : 0) +
     (hasColon ? 1 : 0) +
     (isShortLine ? 1 : 0) +
     (isSeparator ? 1 : 0) +
     (hasBlankBefore ? 1 : 0);
 
-  return score >= 2;
+  return score >= 1;
 }
 
 function isContactInfo(line: string): boolean {
