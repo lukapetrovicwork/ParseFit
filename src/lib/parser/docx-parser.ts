@@ -1,6 +1,11 @@
 import mammoth from 'mammoth';
 import { ResumeMetadata } from '@/types';
 
+interface MammothMessage {
+  type: string;
+  message: string;
+}
+
 interface DOCXParseResult {
   text: string;
   metadata: Partial<ResumeMetadata>;
@@ -32,7 +37,7 @@ export async function parseDOCX(buffer: Buffer): Promise<DOCXParseResult> {
   };
 }
 
-function detectImagesInDocx(html: string, messages: mammoth.Message[]): boolean {
+function detectImagesInDocx(html: string, messages: MammothMessage[]): boolean {
   if (html.includes('<img')) {
     return true;
   }
