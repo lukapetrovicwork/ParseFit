@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Lock, Sparkles, FileText, Target, Zap } from 'lucide-react';
 import Link from 'next/link';
+import { AdBanner } from '@/components/ads';
 
 interface ProUpgradePromptProps {
   optimizedCount: number;
@@ -89,6 +90,11 @@ export function ProUpgradePrompt({ optimizedCount, keywordsToAdd }: ProUpgradePr
               Upgrade to Pro
             </Button>
           </Link>
+
+          {/* Ad banner for free users */}
+          <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+            <AdBanner slot="YOUR_AD_SLOT_ID" format="horizontal" />
+          </div>
         </CardContent>
       </Card>
     </div>

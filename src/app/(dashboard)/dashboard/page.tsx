@@ -9,6 +9,7 @@ import { ScanHistory } from '@/components/scan-history';
 import { LoadingPage } from '@/components/loading';
 import { useToast } from '@/components/ui/use-toast';
 import { FileSearch, TrendingUp, Clock, Target } from 'lucide-react';
+import { AdBanner } from '@/components/ads';
 
 interface DashboardData {
   subscription: {
@@ -230,6 +231,13 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Ad banner for free users */}
+      {!isPro && (
+        <div className="my-4">
+          <AdBanner slot="YOUR_DASHBOARD_AD_SLOT" format="horizontal" />
+        </div>
+      )}
 
       <div>
         <div className="mb-4 flex items-center justify-between">
