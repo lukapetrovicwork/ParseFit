@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScoreDisplay } from '@/components/score-display';
 import { KeywordsDisplay } from '@/components/keywords-display';
 import { FeedbackDisplay } from '@/components/feedback-display';
+import { OptimizationDisplay } from '@/components/optimization';
 import { LoadingPage } from '@/components/loading';
 import { useToast } from '@/components/ui/use-toast';
 import { ArrowLeft, FileSearch, Trash2 } from 'lucide-react';
@@ -169,11 +170,14 @@ export default function ScanDetailPage() {
       </div>
 
       <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="keywords">Keywords</TabsTrigger>
           <TabsTrigger value="feedback">Feedback</TabsTrigger>
           <TabsTrigger value="suggestions">Suggestions</TabsTrigger>
+          <TabsTrigger value="optimize" className="gap-1">
+            Optimize
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">
@@ -204,6 +208,10 @@ export default function ScanDetailPage() {
             bulletAnalysis={[]}
             suggestions={scan.suggestions}
           />
+        </TabsContent>
+
+        <TabsContent value="optimize">
+          <OptimizationDisplay scanId={scan.id} />
         </TabsContent>
       </Tabs>
 

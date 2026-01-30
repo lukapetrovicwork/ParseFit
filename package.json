@@ -26,6 +26,7 @@
     "@radix-ui/react-tooltip": "^1.0.7",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
+    "docx": "^9.5.1",
     "lucide-react": "^0.312.0",
     "mammoth": "^1.6.0",
     "natural": "^6.10.4",

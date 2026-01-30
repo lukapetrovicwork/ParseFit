@@ -39,8 +39,9 @@ export const PLANS = {
       "AI-powered suggestions",
       "Bullet-level feedback",
       "Section-by-section scoring",
+      "Download optimized resume (DOCX)",
+      "AI-powered bullet rewrites",
       "Priority support",
-      "Export reports",
     ],
   },
 } as const;
