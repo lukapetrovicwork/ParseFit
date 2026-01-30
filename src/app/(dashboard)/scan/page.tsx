@@ -122,8 +122,8 @@ export default function ScanPage() {
       <div className="space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Scan Results</h1>
-            <p className="text-gray-600">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Scan Results</h1>
+            <p className="text-gray-600 dark:text-gray-300">
               {file?.name} • Scanned just now
             </p>
           </div>
@@ -182,8 +182,8 @@ export default function ScanPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <div className="text-center">
-        <h1 className="text-2xl font-bold text-gray-900">Scan Your Resume</h1>
-        <p className="mt-2 text-gray-600">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Scan Your Resume</h1>
+        <p className="mt-2 text-gray-600 dark:text-gray-300">
           Upload your resume and paste the job description to get your ATS compatibility score
         </p>
       </div>
@@ -242,7 +242,7 @@ export default function ScanPage() {
         </Button>
       </div>
 
-      <div className="text-center text-sm text-gray-500">
+      <div className="text-center text-sm text-gray-500 dark:text-gray-400">
         <p>Your resume is processed securely and never stored on our servers.</p>
       </div>
     </div>

@@ -18,7 +18,7 @@ export function JobDescriptionInput({ value, onChange, disabled }: JobDescriptio
         <Label htmlFor="job-description" className="text-sm font-medium">
           Job Description
         </Label>
-        <span className="text-xs text-gray-500">{wordCount} words</span>
+        <span className="text-xs text-gray-500 dark:text-gray-400">{wordCount} words</span>
       </div>
       <Textarea
         id="job-description"
@@ -35,7 +35,7 @@ Include:
         className="min-h-[200px] resize-y"
       />
       {value.length > 0 && wordCount < 50 && (
-        <p className="text-xs text-amber-600">
+        <p className="text-xs text-amber-600 dark:text-amber-400">
           Job description seems short. Include more details for accurate analysis.
         </p>
       )}
