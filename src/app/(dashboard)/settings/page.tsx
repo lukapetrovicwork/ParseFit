@@ -119,8 +119,8 @@ export default function SettingsPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
-        <p className="text-gray-600">Manage your account and subscription</p>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Settings</h1>
+        <p className="text-gray-600 dark:text-gray-300">Manage your account and subscription</p>
       </div>
 
       <Card>
@@ -131,16 +131,16 @@ export default function SettingsPage() {
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-500">Email</p>
-              <p className="text-gray-900">
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Email</p>
+              <p className="text-gray-900 dark:text-white">
                 {user?.emailAddresses[0]?.emailAddress || 'Not available'}
               </p>
             </div>
           </div>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-500">Member Since</p>
-              <p className="text-gray-900">
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Member Since</p>
+              <p className="text-gray-900 dark:text-white">
                 {user?.createdAt
                   ? new Date(user.createdAt).toLocaleDateString('en-US', {
                       month: 'long',
@@ -170,8 +170,8 @@ export default function SettingsPage() {
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-500">Scans This Month</p>
-                <p className="text-gray-900">
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Scans This Month</p>
+                <p className="text-gray-900 dark:text-white">
                   {subscription.scansUsed}
                   {subscription.tier === 'FREE' && ` / ${FREE_SCAN_LIMIT}`}
                   {subscription.tier === 'PRO' && ' (Unlimited)'}
@@ -181,7 +181,7 @@ export default function SettingsPage() {
             {subscription.tier === 'PRO' && (
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-500">Status</p>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Status</p>
                   <p className="text-gray-900 capitalize">{subscription.status.toLowerCase()}</p>
                 </div>
               </div>
@@ -191,7 +191,7 @@ export default function SettingsPage() {
       )}
 
       <div>
-        <h2 className="mb-6 text-xl font-semibold text-gray-900">Plans</h2>
+        <h2 className="mb-6 text-xl font-semibold text-gray-900 dark:text-white">Plans</h2>
         <Pricing
           currentPlan={subscription?.tier || 'FREE'}
           onSubscribe={handleSubscribe}

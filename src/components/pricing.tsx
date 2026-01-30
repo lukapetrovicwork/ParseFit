@@ -40,7 +40,7 @@ export function Pricing({ currentPlan = 'FREE', onSubscribe, onManage }: Pricing
           <CardDescription>Get started with basic ATS scanning</CardDescription>
           <div className="pt-4">
             <span className="text-4xl font-bold">$0</span>
-            <span className="text-gray-500">/month</span>
+            <span className="text-gray-500 dark:text-gray-400">/month</span>
           </div>
         </CardHeader>
         <CardContent>
@@ -73,7 +73,7 @@ export function Pricing({ currentPlan = 'FREE', onSubscribe, onManage }: Pricing
           <CardDescription>Unlimited scans with advanced features</CardDescription>
           <div className="pt-4">
             <span className="text-4xl font-bold">${PLANS.PRO.price}</span>
-            <span className="text-gray-500">/month</span>
+            <span className="text-gray-500 dark:text-gray-400">/month</span>
           </div>
         </CardHeader>
         <CardContent>

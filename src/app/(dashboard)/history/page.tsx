@@ -112,8 +112,8 @@ export default function HistoryPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Scan History</h1>
-        <p className="text-gray-600">View and manage your resume scan history</p>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Scan History</h1>
+        <p className="text-gray-600 dark:text-gray-300">View and manage your resume scan history</p>
       </div>
 
       {scans.length > 1 && (
@@ -125,7 +125,7 @@ export default function HistoryPage() {
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" />
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200 dark:stroke-gray-700" />
                   <XAxis dataKey="date" fontSize={12} />
                   <YAxis domain={[0, 100]} fontSize={12} />
                   <Tooltip />
@@ -153,7 +153,7 @@ export default function HistoryPage() {
       )}
 
       <div>
-        <h2 className="mb-4 text-lg font-semibold text-gray-900">All Scans</h2>
+        <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">All Scans</h2>
         <ScanHistory scans={scans} onDelete={handleDeleteScan} />
 
         {hasMore && (
