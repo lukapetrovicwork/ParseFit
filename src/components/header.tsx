@@ -6,6 +6,7 @@ import { UserButton, SignedIn, SignedOut } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { FileSearch, LayoutDashboard, History, Settings, Menu, X } from 'lucide-react';
+import { ThemeToggle } from '@/components/theme-toggle';
 import { useState } from 'react';
 
 const navigation = [
@@ -20,7 +21,7 @@ export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 border-b bg-white">
+    <header className="sticky top-0 z-50 border-b bg-white dark:bg-gray-900 dark:border-gray-800">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center gap-8">
@@ -43,7 +44,7 @@ export function Header() {
                         'flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors',
                         isActive
                           ? 'bg-primary/10 text-primary'
-                          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white'
                       )}
                     >
                       <item.icon className="h-4 w-4" />
@@ -56,6 +57,7 @@ export function Header() {
           </div>
 
           <div className="flex items-center gap-4">
+            <ThemeToggle />
             <SignedIn>
               <UserButton
                 afterSignOutUrl="/"
@@ -91,7 +93,7 @@ export function Header() {
 
         <SignedIn>
           {mobileMenuOpen && (
-            <nav className="border-t py-4 md:hidden">
+            <nav className="border-t py-4 md:hidden dark:border-gray-800">
               <div className="flex flex-col gap-1">
                 {navigation.map((item) => {
                   const isActive = pathname === item.href;
@@ -104,7 +106,7 @@ export function Header() {
                         'flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors',
                         isActive
                           ? 'bg-primary/10 text-primary'
-                          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white'
                       )}
                     >
                       <item.icon className="h-4 w-4" />

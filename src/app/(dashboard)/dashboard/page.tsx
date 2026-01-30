@@ -142,8 +142,8 @@ export default function DashboardPage() {
     <div className="space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-600">Welcome back! Here&apos;s your resume scanning overview.</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
+          <p className="text-gray-600 dark:text-gray-300">Welcome back! Here&apos;s your resume scanning overview.</p>
         </div>
         <Link href="/scan">
           <Button className="gap-2">
@@ -156,10 +156,10 @@ export default function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
               Scans This Month
             </CardTitle>
-            <Clock className="h-4 w-4 text-gray-400" />
+            <Clock className="h-4 w-4 text-gray-400 dark:text-gray-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -174,7 +174,7 @@ export default function DashboardPage() {
               <Progress value={scansUsedPercentage} className="mt-2 h-1" />
             )}
             {!isPro && (
-              <p className="mt-2 text-xs text-gray-500">
+              <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
                 <Link href="/settings" className="text-primary hover:underline">
                   Upgrade to Pro
                 </Link>{' '}
@@ -186,36 +186,36 @@ export default function DashboardPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
               Total Scans
             </CardTitle>
-            <FileSearch className="h-4 w-4 text-gray-400" />
+            <FileSearch className="h-4 w-4 text-gray-400 dark:text-gray-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{data.stats.totalScans}</div>
-            <p className="mt-2 text-xs text-gray-500">All-time scans</p>
+            <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">All-time scans</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
               Average Score
             </CardTitle>
-            <Target className="h-4 w-4 text-gray-400" />
+            <Target className="h-4 w-4 text-gray-400 dark:text-gray-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{data.stats.averageScore}</div>
-            <p className="mt-2 text-xs text-gray-500">Out of 100</p>
+            <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">Out of 100</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600">
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
               Improvement
             </CardTitle>
-            <TrendingUp className="h-4 w-4 text-gray-400" />
+            <TrendingUp className="h-4 w-4 text-gray-400 dark:text-gray-500" />
           </CardHeader>
           <CardContent>
             <div
@@ -226,14 +226,14 @@ export default function DashboardPage() {
               {data.stats.improvement >= 0 ? '+' : ''}
               {data.stats.improvement}
             </div>
-            <p className="mt-2 text-xs text-gray-500">Since first scan</p>
+            <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">Since first scan</p>
           </CardContent>
         </Card>
       </div>
 
       <div>
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900">Recent Scans</h2>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Recent Scans</h2>
           {data.stats.totalScans > 5 && (
             <Link href="/history">
               <Button variant="outline" size="sm">

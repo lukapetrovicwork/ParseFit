@@ -14,7 +14,7 @@ import {
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white to-gray-50">
+    <div className="min-h-screen bg-gradient-to-b from-white to-gray-50 dark:from-gray-900 dark:to-gray-950">
       <Header />
 
       <main>
@@ -29,12 +29,12 @@ export default function HomePage() {
               Trusted by 10,000+ job seekers
             </div>
 
-            <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-5xl lg:text-6xl">
+            <h1 className="text-4xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-5xl lg:text-6xl">
               Get Your Resume Past{' '}
               <span className="text-primary">ATS Systems</span>
             </h1>
 
-            <p className="mx-auto mt-6 max-w-2xl text-lg text-gray-600">
+            <p className="mx-auto mt-6 max-w-2xl text-lg text-gray-600 dark:text-gray-300">
               Upload your resume and job description to instantly see your ATS
               compatibility score, missing keywords, and get actionable suggestions
               to land more interviews.
@@ -66,18 +66,18 @@ export default function HomePage() {
               </SignedOut>
             </div>
 
-            <p className="mt-4 text-sm text-gray-500">
+            <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
               Free tier includes 3 scans per month. No credit card required.
             </p>
           </div>
         </section>
 
-        <section className="border-y bg-white px-4 py-16 sm:px-6 lg:px-8">
+        <section className="border-y bg-white px-4 py-16 sm:px-6 lg:px-8 dark:bg-gray-900 dark:border-gray-800">
           <div className="mx-auto max-w-6xl">
-            <h2 className="text-center text-3xl font-bold text-gray-900">
+            <h2 className="text-center text-3xl font-bold text-gray-900 dark:text-white">
               Everything You Need to Beat the ATS
             </h2>
-            <p className="mx-auto mt-4 max-w-2xl text-center text-gray-600">
+            <p className="mx-auto mt-4 max-w-2xl text-center text-gray-600 dark:text-gray-300">
               Our comprehensive analysis helps you optimize every aspect of your
               resume for maximum ATS compatibility.
             </p>
@@ -109,7 +109,7 @@ export default function HomePage() {
 
         <section className="px-4 py-16 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-6xl">
-            <h2 className="text-center text-3xl font-bold text-gray-900">
+            <h2 className="text-center text-3xl font-bold text-gray-900 dark:text-white">
               How It Works
             </h2>
 
@@ -133,9 +133,9 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section className="border-t bg-gray-50 px-4 py-16 sm:px-6 lg:px-8">
+        <section className="border-t bg-gray-50 px-4 py-16 sm:px-6 lg:px-8 dark:bg-gray-800 dark:border-gray-700">
           <div className="mx-auto max-w-6xl">
-            <h2 className="text-center text-3xl font-bold text-gray-900">
+            <h2 className="text-center text-3xl font-bold text-gray-900 dark:text-white">
               What You Get
             </h2>
 
@@ -152,12 +152,12 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section className="border-t px-4 py-16 sm:px-6 lg:px-8">
+        <section className="border-t px-4 py-16 sm:px-6 lg:px-8 dark:border-gray-700">
           <div className="mx-auto max-w-4xl text-center">
-            <h2 className="text-3xl font-bold text-gray-900">
+            <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
               Ready to Land More Interviews?
             </h2>
-            <p className="mt-4 text-lg text-gray-600">
+            <p className="mt-4 text-lg text-gray-600 dark:text-gray-300">
               Join thousands of job seekers who have improved their resumes with
               ParseFit.
             </p>
@@ -185,8 +185,8 @@ export default function HomePage() {
         </section>
       </main>
 
-      <footer className="border-t bg-white px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-6xl text-center text-sm text-gray-500">
+      <footer className="border-t bg-white px-4 py-8 sm:px-6 lg:px-8 dark:bg-gray-900 dark:border-gray-800">
+        <div className="mx-auto max-w-6xl text-center text-sm text-gray-500 dark:text-gray-400">
           <p>&copy; {new Date().getFullYear()} ParseFit. All rights reserved.</p>
         </div>
       </footer>
@@ -204,12 +204,12 @@ function FeatureCard({
   description: string;
 }) {
   return (
-    <div className="rounded-xl border bg-white p-6 shadow-sm transition-shadow hover:shadow-md">
+    <div className="rounded-xl border bg-white p-6 shadow-sm transition-shadow hover:shadow-md dark:bg-gray-800 dark:border-gray-700">
       <div className="mb-4 inline-flex rounded-lg bg-primary/10 p-3">
         <Icon className="h-6 w-6 text-primary" />
       </div>
-      <h3 className="mb-2 font-semibold text-gray-900">{title}</h3>
-      <p className="text-sm text-gray-600">{description}</p>
+      <h3 className="mb-2 font-semibold text-gray-900 dark:text-white">{title}</h3>
+      <p className="text-sm text-gray-600 dark:text-gray-300">{description}</p>
     </div>
   );
 }
@@ -228,17 +228,17 @@ function StepCard({
       <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-xl font-bold text-white">
         {step}
       </div>
-      <h3 className="mb-2 font-semibold text-gray-900">{title}</h3>
-      <p className="text-sm text-gray-600">{description}</p>
+      <h3 className="mb-2 font-semibold text-gray-900 dark:text-white">{title}</h3>
+      <p className="text-sm text-gray-600 dark:text-gray-300">{description}</p>
     </div>
   );
 }
 
 function BenefitItem({ text }: { text: string }) {
   return (
-    <div className="flex items-center gap-3 rounded-lg bg-white p-4 shadow-sm">
+    <div className="flex items-center gap-3 rounded-lg bg-white p-4 shadow-sm dark:bg-gray-900 dark:shadow-gray-900/50">
       <CheckCircle2 className="h-5 w-5 flex-shrink-0 text-green-500" />
-      <span className="font-medium text-gray-900">{text}</span>
+      <span className="font-medium text-gray-900 dark:text-white">{text}</span>
     </div>
   );
 }

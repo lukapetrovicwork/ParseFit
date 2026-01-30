@@ -48,10 +48,10 @@ export function ScanHistory({ scans, onDelete }: ScanHistoryProps) {
 
   if (scans.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed py-12 text-center">
-        <FileText className="mb-4 h-12 w-12 text-gray-400" />
-        <h3 className="text-lg font-medium text-gray-900">No scans yet</h3>
-        <p className="mt-1 text-sm text-gray-500">
+      <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed py-12 text-center dark:border-gray-700">
+        <FileText className="mb-4 h-12 w-12 text-gray-400 dark:text-gray-500" />
+        <h3 className="text-lg font-medium text-gray-900 dark:text-white">No scans yet</h3>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
           Upload your resume to get your first ATS analysis
         </p>
         <Link href="/scan">
@@ -69,14 +69,14 @@ export function ScanHistory({ scans, onDelete }: ScanHistoryProps) {
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-100">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
                     <span className={`text-lg font-bold ${getScoreColor(scan.overallScore)}`}>
                       {scan.overallScore}
                     </span>
                   </div>
                   <div>
                     <h3 className="font-medium">{scan.fileName}</h3>
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
                       {formatDate(scan.createdAt)} • Keywords: {scan.keywordScore}%
                     </p>
                   </div>
@@ -103,14 +103,14 @@ export function ScanHistory({ scans, onDelete }: ScanHistoryProps) {
                     variant="ghost"
                     size="sm"
                     onClick={() => setDeleteId(scan.id)}
-                    className="text-red-600 hover:bg-red-50 hover:text-red-700"
+                    className="text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950 dark:hover:text-red-300"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
               {scan.jobDescription && (
-                <p className="mt-2 text-xs text-gray-400">
+                <p className="mt-2 text-xs text-gray-400 dark:text-gray-500">
                   Job: {truncateText(scan.jobDescription, 100)}
                 </p>
               )}
