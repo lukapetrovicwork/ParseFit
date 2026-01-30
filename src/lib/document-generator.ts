@@ -1,12 +1,18 @@
-import {
-  Document,
-  Paragraph,
-  TextRun,
-  HeadingLevel,
-  AlignmentType,
-  Packer,
-} from 'docx';
-import { BulletAnalysis, SectionType } from '@/types';
+import { TDocumentDefinitions, Content, ContentText, ContentColumns } from 'pdfmake/interfaces';
+import { BulletAnalysis, SectionType, ResumeSection } from '@/types';
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const PdfPrinter = require('pdfmake/src/printer');
+
+// Define fonts for pdfmake (using built-in fonts)
+const fonts = {
+  Helvetica: {
+    normal: 'Helvetica',
+    bold: 'Helvetica-Bold',
+    italics: 'Helvetica-Oblique',
+    bolditalics: 'Helvetica-BoldOblique',
+  },
+};
 
 interface OptimizedResumeData {
   resumeText: string;
@@ -14,342 +20,441 @@ interface OptimizedResumeData {
   missingKeywords: string[];
   foundKeywords: string[];
   fileName: string;
+  parsedSections?: ResumeSection[]; // Stored sections from database
 }
 
-interface ResumeSection {
+interface ProcessedSection {
+  type: string;
+  title: string;
+  entries: SectionEntry[];
+}
+
+interface SectionEntry {
+  title?: string;
+  subtitle?: string;
+  date?: string;
+  bullets: string[];
+}
+
+interface ContactInfo {
   name: string;
-  content: string[];
+  lines: string[];
 }
 
-// Section name mapping for display
-const SECTION_DISPLAY_NAMES: Record<string, string> = {
-  summary: 'Professional Summary',
-  experience: 'Professional Experience',
-  education: 'Education',
-  skills: 'Skills',
-  projects: 'Projects',
-  certifications: 'Certifications',
-  awards: 'Awards & Achievements',
-  publications: 'Publications',
-  languages: 'Languages',
-  interests: 'Interests',
-  references: 'References',
+// Section display titles
+const SECTION_TITLES: Record<string, string> = {
+  summary: 'SUMMARY',
+  experience: 'EXPERIENCE',
+  education: 'EDUCATION',
+  skills: 'SKILLS',
+  projects: 'PROJECTS',
+  certifications: 'CERTIFICATIONS',
+  awards: 'AWARDS',
+  publications: 'PUBLICATIONS',
+  languages: 'LANGUAGES',
+  interests: 'INTERESTS',
+  references: 'REFERENCES',
+  unknown: 'OTHER',
 };
 
-// Parse resume text into sections
-function parseResumeIntoSections(resumeText: string): ResumeSection[] {
-  const lines = resumeText.split('\n').filter((line) => line.trim());
-  const sections: ResumeSection[] = [];
-  let currentSection: ResumeSection | null = null;
+// Convert stored ResumeSection to ProcessedSection
+function convertStoredSections(storedSections: ResumeSection[]): ProcessedSection[] {
+  return storedSections
+    .filter(s => s.name !== 'unknown' || s.bullets.length > 0)
+    .map(section => {
+      const title = SECTION_TITLES[section.name] || section.name.toUpperCase();
 
-  const sectionPatterns = [
-    /^(professional\s+)?summary/i,
-    /^(work\s+)?experience/i,
-    /^education/i,
-    /^skills/i,
-    /^(technical\s+)?projects/i,
-    /^certifications?/i,
-    /^awards?/i,
-    /^publications?/i,
-    /^languages?/i,
-    /^interests?/i,
-    /^references?/i,
+      // Parse the content to extract entries
+      const entries = parseContentIntoEntries(section.name, section.content, section.bullets);
+
+      return {
+        type: section.name,
+        title,
+        entries,
+      };
+    });
+}
+
+// Parse section content into structured entries
+function parseContentIntoEntries(
+  sectionType: string,
+  content: string,
+  bullets: string[]
+): SectionEntry[] {
+  // Skills-type sections: just return bullets as-is
+  if (['skills', 'languages', 'interests'].includes(sectionType)) {
+    if (bullets.length > 0) {
+      return [{ bullets }];
+    }
+    // Fall back to content lines
+    const lines = content.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    return [{ bullets: lines }];
+  }
+
+  // Summary: combine into one paragraph
+  if (sectionType === 'summary') {
+    const text = bullets.length > 0
+      ? bullets.join(' ')
+      : content.replace(/\n+/g, ' ').trim();
+    return [{ bullets: [text] }];
+  }
+
+  // Experience/Projects/Education: parse into entries with titles and bullets
+  const contentLines = content.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  const entries: SectionEntry[] = [];
+  let currentEntry: SectionEntry | null = null;
+  let bulletIndex = 0;
+
+  for (const line of contentLines) {
+    const isBullet = /^[•\-\*\u2022\u2023\u25E6\u2043]\s/.test(line);
+    const hasDate = /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*\s+\d{4}/i.test(line) ||
+                    /\d{4}\s*[-–—]\s*(present|\d{4})/i.test(line) ||
+                    /\b(present|current)\b/i.test(line);
+    const isShort = line.length < 80;
+
+    if (isBullet) {
+      // Use the stored bullet if available, otherwise clean this line
+      const bulletText = bulletIndex < bullets.length
+        ? bullets[bulletIndex++]
+        : line.replace(/^[•\-\*\u2022\u2023\u25E6\u2043]\s*/, '');
+
+      if (currentEntry) {
+        currentEntry.bullets.push(bulletText);
+      } else {
+        currentEntry = { bullets: [bulletText] };
+      }
+    } else if (hasDate) {
+      if (currentEntry) {
+        currentEntry.date = line;
+      } else {
+        currentEntry = { title: line, bullets: [] };
+      }
+    } else if (isShort && (!currentEntry || currentEntry.bullets.length > 0)) {
+      // Looks like a new entry title
+      if (currentEntry) {
+        entries.push(currentEntry);
+      }
+      currentEntry = { title: line, bullets: [] };
+    } else if (currentEntry && !currentEntry.subtitle && isShort && !hasDate) {
+      currentEntry.subtitle = line;
+    } else if (currentEntry) {
+      // Treat as bullet content
+      currentEntry.bullets.push(line);
+    } else {
+      currentEntry = { title: line, bullets: [] };
+    }
+  }
+
+  if (currentEntry) {
+    entries.push(currentEntry);
+  }
+
+  // If no entries were created but we have bullets, create a single entry
+  if (entries.length === 0 && bullets.length > 0) {
+    entries.push({ bullets });
+  }
+
+  return entries;
+}
+
+// Extract contact info from resume text (header before first section)
+function extractContactInfo(resumeText: string, firstSectionStart?: number): ContactInfo {
+  const headerText = firstSectionStart
+    ? resumeText.substring(0, firstSectionStart)
+    : resumeText.substring(0, 500); // Fallback to first 500 chars
+
+  const lines = headerText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+
+  if (lines.length === 0) {
+    return { name: '', lines: [] };
+  }
+
+  // First line is usually the name
+  const name = lines[0];
+  const contactLines: string[] = [];
+
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i];
+    // Skip if it looks like a section header
+    if (/^(summary|experience|education|skills|projects)/i.test(line)) break;
+    contactLines.push(line);
+  }
+
+  return { name, lines: contactLines };
+}
+
+// Fallback: Parse resume text when stored sections not available
+function parseResumeTextFallback(resumeText: string): { contact: ContactInfo; sections: ProcessedSection[] } {
+  const SECTION_PATTERNS: { pattern: RegExp; type: string }[] = [
+    { pattern: /^(professional\s+)?summary$/i, type: 'summary' },
+    { pattern: /^(work\s+|professional\s+)?experience$/i, type: 'experience' },
+    { pattern: /^education$/i, type: 'education' },
+    { pattern: /^(core\s+|technical\s+)?skills?$/i, type: 'skills' },
+    { pattern: /^(technical\s+)?projects?$/i, type: 'projects' },
+    { pattern: /^certifications?$/i, type: 'certifications' },
+    { pattern: /^awards?/i, type: 'awards' },
+    { pattern: /^languages?$/i, type: 'languages' },
   ];
 
-  const sectionNames = [
-    'summary',
-    'experience',
-    'education',
-    'skills',
-    'projects',
-    'certifications',
-    'awards',
-    'publications',
-    'languages',
-    'interests',
-    'references',
-  ];
+  const lines = resumeText.split('\n');
+  const sections: ProcessedSection[] = [];
+  let currentSection: { type: string; content: string[] } | null = null;
+  const headerLines: string[] = [];
+  let foundFirstSection = false;
 
-  for (const line of lines) {
-    const trimmedLine = line.trim();
-    let foundSection = false;
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line) continue;
 
-    for (let i = 0; i < sectionPatterns.length; i++) {
-      if (sectionPatterns[i].test(trimmedLine)) {
-        if (currentSection) {
-          sections.push(currentSection);
-        }
-        currentSection = {
-          name: sectionNames[i],
-          content: [],
-        };
-        foundSection = true;
+    let matchedType: string | null = null;
+    for (const { pattern, type } of SECTION_PATTERNS) {
+      if (pattern.test(line)) {
+        matchedType = type;
         break;
       }
     }
 
-    if (!foundSection && currentSection) {
-      currentSection.content.push(trimmedLine);
-    } else if (!foundSection && !currentSection && trimmedLine) {
-      // Content before first section (usually contact info)
-      if (!sections.find((s) => s.name === 'header')) {
-        currentSection = { name: 'header', content: [trimmedLine] };
+    if (matchedType) {
+      foundFirstSection = true;
+      if (currentSection) {
+        sections.push({
+          type: currentSection.type,
+          title: SECTION_TITLES[currentSection.type] || currentSection.type.toUpperCase(),
+          entries: parseContentIntoEntries(currentSection.type, currentSection.content.join('\n'), []),
+        });
       }
+      currentSection = { type: matchedType, content: [] };
+    } else if (!foundFirstSection) {
+      headerLines.push(line);
+    } else if (currentSection) {
+      currentSection.content.push(line);
     }
   }
 
   if (currentSection) {
-    sections.push(currentSection);
-  }
-
-  return sections;
-}
-
-// Apply bullet optimizations
-function applyBulletOptimizations(
-  sections: ResumeSection[],
-  bulletAnalysis: BulletAnalysis[]
-): ResumeSection[] {
-  // Create a map of original bullets to their rewrites
-  const bulletRewrites = new Map<string, string>();
-
-  for (const bullet of bulletAnalysis) {
-    if (bullet.rewriteSuggestion && bullet.score < 80) {
-      // Normalize the bullet text for matching
-      const normalizedOriginal = bullet.text.trim().toLowerCase();
-      bulletRewrites.set(normalizedOriginal, bullet.rewriteSuggestion);
-    }
-  }
-
-  return sections.map((section) => ({
-    ...section,
-    content: section.content.map((line) => {
-      const normalizedLine = line.trim().toLowerCase();
-      // Check if this line matches any bullet that needs rewriting
-      for (const [original, rewrite] of bulletRewrites) {
-        if (normalizedLine.includes(original.substring(0, 50)) ||
-            original.includes(normalizedLine.substring(0, 50))) {
-          return rewrite;
-        }
-      }
-      return line;
-    }),
-  }));
-}
-
-// Inject missing keywords into skills section
-function injectKeywords(
-  sections: ResumeSection[],
-  missingKeywords: string[],
-  foundKeywords: string[]
-): ResumeSection[] {
-  if (missingKeywords.length === 0) return sections;
-
-  const skillsIndex = sections.findIndex((s) => s.name === 'skills');
-
-  if (skillsIndex !== -1) {
-    // Add missing keywords to existing skills section
-    const existingSkills = sections[skillsIndex].content.join(' ');
-    const keywordsToAdd = missingKeywords.filter(
-      (kw) => !existingSkills.toLowerCase().includes(kw.toLowerCase())
-    );
-
-    if (keywordsToAdd.length > 0) {
-      sections[skillsIndex].content.push(
-        `Additional Skills: ${keywordsToAdd.slice(0, 10).join(', ')}`
-      );
-    }
-  } else {
-    // Create a new skills section
     sections.push({
-      name: 'skills',
-      content: [missingKeywords.slice(0, 15).join(', ')],
+      type: currentSection.type,
+      title: SECTION_TITLES[currentSection.type] || currentSection.type.toUpperCase(),
+      entries: parseContentIntoEntries(currentSection.type, currentSection.content.join('\n'), []),
     });
   }
 
-  return sections;
+  const contact: ContactInfo = {
+    name: headerLines[0] || '',
+    lines: headerLines.slice(1),
+  };
+
+  return { contact, sections };
 }
 
-// Generate DOCX document
-export async function generateOptimizedResume(
-  data: OptimizedResumeData
-): Promise<Buffer> {
-  // Parse resume into sections
-  let sections = parseResumeIntoSections(data.resumeText);
+// Apply bullet rewrites from analysis
+function applyOptimizations(
+  sections: ProcessedSection[],
+  bulletAnalysis: BulletAnalysis[]
+): ProcessedSection[] {
+  const bulletRewrites = new Map<string, string>();
 
-  // Apply bullet optimizations
-  sections = applyBulletOptimizations(sections, data.bulletAnalysis);
+  for (const analysis of bulletAnalysis) {
+    if (analysis.rewriteSuggestion && analysis.score < 80) {
+      const normalized = analysis.text.toLowerCase().trim().substring(0, 60);
+      bulletRewrites.set(normalized, analysis.rewriteSuggestion);
+    }
+  }
 
-  // Inject missing keywords
-  sections = injectKeywords(sections, data.missingKeywords, data.foundKeywords);
+  if (bulletRewrites.size === 0) return sections;
 
-  // Build document paragraphs
-  const paragraphs: Paragraph[] = [];
+  return sections.map(section => ({
+    ...section,
+    entries: section.entries.map(entry => ({
+      ...entry,
+      bullets: entry.bullets.map(bullet => {
+        const normalized = bullet.toLowerCase().trim().substring(0, 60);
+        for (const [original, rewrite] of bulletRewrites) {
+          if (normalized === original ||
+              normalized.includes(original.substring(0, 40)) ||
+              original.includes(normalized.substring(0, 40))) {
+            return rewrite;
+          }
+        }
+        return bullet;
+      }),
+    })),
+  }));
+}
 
-  // Add title (filename without extension)
-  const title = data.fileName.replace(/\.(pdf|docx)$/i, '');
-  paragraphs.push(
-    new Paragraph({
-      text: 'Optimized Resume',
-      heading: HeadingLevel.TITLE,
-      alignment: AlignmentType.CENTER,
-      spacing: { after: 200 },
-    })
-  );
+// Add missing keywords to skills
+function addMissingKeywords(
+  sections: ProcessedSection[],
+  missingKeywords: string[]
+): ProcessedSection[] {
+  if (missingKeywords.length === 0) return sections;
 
-  paragraphs.push(
-    new Paragraph({
-      children: [
-        new TextRun({
-          text: `Generated from: ${data.fileName}`,
-          italics: true,
-          size: 20,
-          color: '666666',
-        }),
-      ],
-      alignment: AlignmentType.CENTER,
-      spacing: { after: 400 },
-    })
-  );
+  const skillsIdx = sections.findIndex(s => s.type === 'skills');
 
-  // Add each section
-  for (const section of sections) {
-    if (section.name === 'header') {
-      // Header content (contact info) - no heading
-      for (const line of section.content) {
-        paragraphs.push(
-          new Paragraph({
-            children: [new TextRun({ text: line, size: 24 })],
-            alignment: AlignmentType.CENTER,
-            spacing: { after: 100 },
-          })
-        );
-      }
-      paragraphs.push(new Paragraph({ text: '', spacing: { after: 200 } }));
-    } else {
-      // Section heading
-      const displayName =
-        SECTION_DISPLAY_NAMES[section.name] ||
-        section.name.charAt(0).toUpperCase() + section.name.slice(1);
+  if (skillsIdx >= 0) {
+    const skills = sections[skillsIdx];
+    const existing = skills.entries.flatMap(e => e.bullets).join(' ').toLowerCase();
+    const toAdd = missingKeywords.filter(kw => !existing.includes(kw.toLowerCase())).slice(0, 8);
 
-      paragraphs.push(
-        new Paragraph({
-          text: displayName.toUpperCase(),
-          heading: HeadingLevel.HEADING_1,
-          spacing: { before: 300, after: 150 },
-          border: {
-            bottom: { color: '000000', space: 1, size: 6, style: 'single' },
-          },
-        })
-      );
-
-      // Section content
-      for (const line of section.content) {
-        const isBullet = /^[•\-\*\d+\.\)]/.test(line.trim());
-
-        paragraphs.push(
-          new Paragraph({
-            children: [
-              new TextRun({
-                text: isBullet ? line.replace(/^[•\-\*]\s*/, '• ') : line,
-                size: 22,
-              }),
-            ],
-            spacing: { after: 100 },
-            indent: isBullet ? { left: 360 } : undefined,
-          })
-        );
+    if (toAdd.length > 0 && skills.entries.length > 0) {
+      const lastEntry = skills.entries[skills.entries.length - 1];
+      if (lastEntry.bullets.length > 0) {
+        lastEntry.bullets[lastEntry.bullets.length - 1] += ', ' + toAdd.join(', ');
+      } else {
+        lastEntry.bullets.push(toAdd.join(', '));
       }
     }
   }
 
-  // Add optimization notes at the end
-  paragraphs.push(new Paragraph({ text: '', spacing: { before: 400 } }));
-  paragraphs.push(
-    new Paragraph({
-      children: [
-        new TextRun({
-          text: '--- Optimization Notes ---',
-          bold: true,
-          size: 20,
-          color: '2563eb',
-        }),
-      ],
-      spacing: { before: 400, after: 100 },
-    })
-  );
-
-  const optimizedBulletCount = data.bulletAnalysis.filter(
-    (b) => b.rewriteSuggestion && b.score < 80
-  ).length;
-
-  paragraphs.push(
-    new Paragraph({
-      children: [
-        new TextRun({
-          text: `• ${optimizedBulletCount} bullet points were optimized for ATS compatibility`,
-          size: 18,
-          color: '666666',
-        }),
-      ],
-      spacing: { after: 50 },
-    })
-  );
-
-  if (data.missingKeywords.length > 0) {
-    paragraphs.push(
-      new Paragraph({
-        children: [
-          new TextRun({
-            text: `• ${Math.min(data.missingKeywords.length, 10)} missing keywords were added to the Skills section`,
-            size: 18,
-            color: '666666',
-          }),
-        ],
-        spacing: { after: 50 },
-      })
-    );
-  }
-
-  paragraphs.push(
-    new Paragraph({
-      children: [
-        new TextRun({
-          text: '• Review the document and customize placeholder values marked with [Add: ...]',
-          size: 18,
-          color: '666666',
-        }),
-      ],
-      spacing: { after: 50 },
-    })
-  );
-
-  // Create document
-  const doc = new Document({
-    sections: [
-      {
-        properties: {},
-        children: paragraphs,
-      },
-    ],
-    styles: {
-      default: {
-        document: {
-          run: {
-            font: 'Calibri',
-            size: 22,
-          },
-        },
-      },
-    },
-  });
-
-  // Generate buffer
-  const buffer = await Packer.toBuffer(doc);
-  return buffer;
+  return sections;
 }
 
-// Get optimization preview data
+// Generate PDF
+export async function generateOptimizedResume(
+  data: OptimizedResumeData
+): Promise<Buffer> {
+  let contact: ContactInfo;
+  let sections: ProcessedSection[];
+
+  // Use stored sections if available, otherwise parse from text
+  if (data.parsedSections && data.parsedSections.length > 0) {
+    // Find the first section's start index for contact extraction
+    const firstSectionStart = data.parsedSections[0]?.startIndex;
+    contact = extractContactInfo(data.resumeText, firstSectionStart);
+    sections = convertStoredSections(data.parsedSections);
+  } else {
+    // Fallback to text parsing
+    const parsed = parseResumeTextFallback(data.resumeText);
+    contact = parsed.contact;
+    sections = parsed.sections;
+  }
+
+  // Apply optimizations
+  let optimizedSections = applyOptimizations(sections, data.bulletAnalysis);
+  optimizedSections = addMissingKeywords(optimizedSections, data.missingKeywords);
+
+  const content: Content[] = [];
+
+  // Name - centered, large
+  if (contact.name) {
+    content.push({
+      text: contact.name,
+      fontSize: 20,
+      bold: true,
+      alignment: 'center',
+      margin: [0, 0, 0, 4],
+    } as ContentText);
+  }
+
+  // Contact info - centered
+  for (const line of contact.lines) {
+    content.push({
+      text: line,
+      fontSize: 9,
+      alignment: 'center',
+      color: '#333333',
+      margin: [0, 0, 0, 2],
+    } as ContentText);
+  }
+
+  // Spacer after contact
+  content.push({ text: '', margin: [0, 0, 0, 10] } as ContentText);
+
+  // Sections
+  for (const section of optimizedSections) {
+    // Section header with underline
+    content.push({
+      text: section.title,
+      fontSize: 11,
+      bold: true,
+      margin: [0, 8, 0, 4],
+      decoration: 'underline',
+    } as ContentText);
+
+    // Section content
+    for (const entry of section.entries) {
+      // Entry header (title + date on same line if both exist)
+      if (entry.title) {
+        if (entry.date) {
+          content.push({
+            columns: [
+              { text: entry.title, bold: true, fontSize: 10 },
+              { text: entry.date, fontSize: 9, alignment: 'right', color: '#555555' },
+            ],
+            margin: [0, 4, 0, 1],
+          } as ContentColumns);
+        } else {
+          content.push({
+            text: entry.title,
+            bold: true,
+            fontSize: 10,
+            margin: [0, 4, 0, 1],
+          } as ContentText);
+        }
+      }
+
+      // Subtitle (job title, degree, etc)
+      if (entry.subtitle) {
+        content.push({
+          text: entry.subtitle,
+          italics: true,
+          fontSize: 10,
+          margin: [0, 0, 0, 2],
+        } as ContentText);
+      }
+
+      // Content/bullets
+      if (entry.bullets.length > 0) {
+        if (['skills', 'languages', 'interests'].includes(section.type)) {
+          // Skills-type: comma-separated or as lines
+          content.push({
+            text: entry.bullets.join(', '),
+            fontSize: 10,
+            margin: [0, 2, 0, 4],
+          } as ContentText);
+        } else if (section.type === 'summary') {
+          // Summary: paragraph
+          content.push({
+            text: entry.bullets.join(' '),
+            fontSize: 10,
+            margin: [0, 2, 0, 4],
+          } as ContentText);
+        } else {
+          // Regular bullets
+          content.push({
+            ul: entry.bullets,
+            fontSize: 10,
+            margin: [15, 2, 0, 4],
+          });
+        }
+      }
+    }
+  }
+
+  const docDefinition: TDocumentDefinitions = {
+    content,
+    defaultStyle: {
+      font: 'Helvetica',
+      fontSize: 10,
+      lineHeight: 1.15,
+    },
+    pageSize: 'LETTER',
+    pageMargins: [50, 40, 50, 40],
+  };
+
+  const printer = new PdfPrinter(fonts);
+  const pdfDoc = printer.createPdfKitDocument(docDefinition);
+
+  return new Promise((resolve, reject) => {
+    const chunks: Uint8Array[] = [];
+    pdfDoc.on('data', (chunk: Uint8Array) => chunks.push(chunk));
+    pdfDoc.on('end', () => resolve(Buffer.concat(chunks)));
+    pdfDoc.on('error', reject);
+    pdfDoc.end();
+  });
+}
+
+// Preview data for UI
 export function getOptimizationPreview(
   bulletAnalysis: BulletAnalysis[],
   missingKeywords: string[]
@@ -359,8 +464,8 @@ export function getOptimizationPreview(
   totalImprovements: number;
 } {
   const optimizedBullets = bulletAnalysis
-    .filter((b) => b.rewriteSuggestion && b.score < 80)
-    .map((b) => ({
+    .filter(b => b.rewriteSuggestion && b.score < 80)
+    .map(b => ({
       original: b.text,
       optimized: b.rewriteSuggestion!,
       section: b.section,

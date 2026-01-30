@@ -47,6 +47,7 @@ model Scan {
   sectionAnalysis   Json     @default("{}")
   bulletAnalysis    Json     @default("[]")
   suggestions       Json     @default("[]")
+  parsedSections    Json?    // Stores parsed resume sections for optimization
 
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 import { generateOptimizedResume, getOptimizationPreview } from '@/lib/document-generator';
-import { BulletAnalysis } from '@/types';
+import { BulletAnalysis, ResumeSection } from '@/types';
 
 export async function GET(
   request: NextRequest,
@@ -108,6 +108,7 @@ export async function POST(
     const bulletAnalysis = (scan.bulletAnalysis as unknown as BulletAnalysis[]) || [];
     const missingKeywords = (scan.missingKeywords as unknown as string[]) || [];
     const foundKeywords = (scan.foundKeywords as unknown as string[]) || [];
+    const parsedSections = (scan.parsedSections as unknown as ResumeSection[]) || undefined;
 
     // Generate the optimized resume document
     const buffer = await generateOptimizedResume({
@@ -116,6 +117,7 @@ export async function POST(
       missingKeywords,
       foundKeywords,
       fileName: scan.fileName,
+      parsedSections,
     });
 
     // Create a safe filename
@@ -124,12 +126,11 @@ export async function POST(
       .replace(/[^a-zA-Z0-9-_]/g, '_') // Replace special chars
       .substring(0, 50); // Limit length
 
-    // Return the document as a downloadable file
+    // Return the document as a downloadable PDF
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
-        'Content-Type':
-          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'Content-Disposition': `attachment; filename="${safeFileName}_optimized.docx"`,
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="${safeFileName}.pdf"`,
       },
     });
   } catch (error) {

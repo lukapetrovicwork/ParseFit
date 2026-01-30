@@ -82,7 +82,7 @@ export function OptimizationDisplay({ scanId }: OptimizationDisplayProps) {
 
       // Get filename from Content-Disposition header
       const contentDisposition = response.headers.get('Content-Disposition');
-      let filename = 'optimized_resume.docx';
+      let filename = 'optimized_resume.pdf';
       if (contentDisposition) {
         const match = contentDisposition.match(/filename="(.+)"/);
         if (match) {
@@ -177,7 +177,7 @@ export function OptimizationDisplay({ scanId }: OptimizationDisplayProps) {
               ) : (
                 <>
                   <Download className="w-4 h-4 mr-2" />
-                  Download DOCX
+                  Download PDF
                 </>
               )}
             </Button>
@@ -293,7 +293,7 @@ export function OptimizationDisplay({ scanId }: OptimizationDisplayProps) {
           )}
         </Button>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-          Downloads as Microsoft Word (.docx) format
+          Downloads as PDF format
         </p>
       </div>
     </div>

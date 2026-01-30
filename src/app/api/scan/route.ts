@@ -143,6 +143,7 @@ export async function POST(request: NextRequest) {
         sectionAnalysis: scanResult.sectionAnalysis as unknown as object,
         bulletAnalysis: scanResult.bulletAnalysis as unknown as [],
         suggestions: scanResult.suggestions as unknown as [],
+        parsedSections: parsedResume.sections as unknown as object,
       },
     });
 

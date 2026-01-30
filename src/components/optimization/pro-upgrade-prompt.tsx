@@ -70,7 +70,7 @@ export function ProUpgradePrompt({ optimizedCount, keywordsToAdd }: ProUpgradePr
             <ul className="space-y-2">
               <li className="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-300">
                 <FileText className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
-                Download optimized DOCX resume
+                Download optimized PDF resume
               </li>
               <li className="flex items-start gap-2 text-sm text-gray-600 dark:text-gray-300">
                 <Target className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
