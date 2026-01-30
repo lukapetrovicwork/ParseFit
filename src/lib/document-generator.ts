@@ -1,18 +1,5 @@
-import { TDocumentDefinitions, Content, ContentText, ContentColumns } from 'pdfmake/interfaces';
+import { PDFDocument, StandardFonts, rgb, PDFFont, PDFPage } from 'pdf-lib';
 import { BulletAnalysis, SectionType, ResumeSection } from '@/types';
-
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const PdfPrinter = require('pdfmake/src/printer');
-
-// Define fonts for pdfmake (using built-in fonts)
-const fonts = {
-  Helvetica: {
-    normal: 'Helvetica',
-    bold: 'Helvetica-Bold',
-    italics: 'Helvetica-Oblique',
-    bolditalics: 'Helvetica-BoldOblique',
-  },
-};
 
 interface OptimizedResumeData {
   resumeText: string;
@@ -20,7 +7,7 @@ interface OptimizedResumeData {
   missingKeywords: string[];
   foundKeywords: string[];
   fileName: string;
-  parsedSections?: ResumeSection[]; // Stored sections from database
+  parsedSections?: ResumeSection[];
 }
 
 interface ProcessedSection {
@@ -57,21 +44,23 @@ const SECTION_TITLES: Record<string, string> = {
   unknown: 'OTHER',
 };
 
+// Page dimensions (Letter size in points)
+const PAGE_WIDTH = 612;
+const PAGE_HEIGHT = 792;
+const MARGIN_LEFT = 50;
+const MARGIN_RIGHT = 50;
+const MARGIN_TOP = 50;
+const MARGIN_BOTTOM = 50;
+const CONTENT_WIDTH = PAGE_WIDTH - MARGIN_LEFT - MARGIN_RIGHT;
+
 // Convert stored ResumeSection to ProcessedSection
 function convertStoredSections(storedSections: ResumeSection[]): ProcessedSection[] {
   return storedSections
     .filter(s => s.name !== 'unknown' || s.bullets.length > 0)
     .map(section => {
       const title = SECTION_TITLES[section.name] || section.name.toUpperCase();
-
-      // Parse the content to extract entries
       const entries = parseContentIntoEntries(section.name, section.content, section.bullets);
-
-      return {
-        type: section.name,
-        title,
-        entries,
-      };
+      return { type: section.name, title, entries };
     });
 }
 
@@ -81,17 +70,14 @@ function parseContentIntoEntries(
   content: string,
   bullets: string[]
 ): SectionEntry[] {
-  // Skills-type sections: just return bullets as-is
   if (['skills', 'languages', 'interests'].includes(sectionType)) {
     if (bullets.length > 0) {
       return [{ bullets }];
     }
-    // Fall back to content lines
     const lines = content.split('\n').map(l => l.trim()).filter(l => l.length > 0);
     return [{ bullets: lines }];
   }
 
-  // Summary: combine into one paragraph
   if (sectionType === 'summary') {
     const text = bullets.length > 0
       ? bullets.join(' ')
@@ -99,7 +85,6 @@ function parseContentIntoEntries(
     return [{ bullets: [text] }];
   }
 
-  // Experience/Projects/Education: parse into entries with titles and bullets
   const contentLines = content.split('\n').map(l => l.trim()).filter(l => l.length > 0);
   const entries: SectionEntry[] = [];
   let currentEntry: SectionEntry | null = null;
@@ -113,7 +98,6 @@ function parseContentIntoEntries(
     const isShort = line.length < 80;
 
     if (isBullet) {
-      // Use the stored bullet if available, otherwise clean this line
       const bulletText = bulletIndex < bullets.length
         ? bullets[bulletIndex++]
         : line.replace(/^[•\-\*\u2022\u2023\u25E6\u2043]\s*/, '');
@@ -130,7 +114,6 @@ function parseContentIntoEntries(
         currentEntry = { title: line, bullets: [] };
       }
     } else if (isShort && (!currentEntry || currentEntry.bullets.length > 0)) {
-      // Looks like a new entry title
       if (currentEntry) {
         entries.push(currentEntry);
       }
@@ -138,7 +121,6 @@ function parseContentIntoEntries(
     } else if (currentEntry && !currentEntry.subtitle && isShort && !hasDate) {
       currentEntry.subtitle = line;
     } else if (currentEntry) {
-      // Treat as bullet content
       currentEntry.bullets.push(line);
     } else {
       currentEntry = { title: line, bullets: [] };
@@ -149,7 +131,6 @@ function parseContentIntoEntries(
     entries.push(currentEntry);
   }
 
-  // If no entries were created but we have bullets, create a single entry
   if (entries.length === 0 && bullets.length > 0) {
     entries.push({ bullets });
   }
@@ -157,11 +138,11 @@ function parseContentIntoEntries(
   return entries;
 }
 
-// Extract contact info from resume text (header before first section)
+// Extract contact info from resume text
 function extractContactInfo(resumeText: string, firstSectionStart?: number): ContactInfo {
   const headerText = firstSectionStart
     ? resumeText.substring(0, firstSectionStart)
-    : resumeText.substring(0, 500); // Fallback to first 500 chars
+    : resumeText.substring(0, 500);
 
   const lines = headerText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
 
@@ -169,13 +150,11 @@ function extractContactInfo(resumeText: string, firstSectionStart?: number): Con
     return { name: '', lines: [] };
   }
 
-  // First line is usually the name
   const name = lines[0];
   const contactLines: string[] = [];
 
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i];
-    // Skip if it looks like a section header
     if (/^(summary|experience|education|skills|projects)/i.test(line)) break;
     contactLines.push(line);
   }
@@ -309,6 +288,183 @@ function addMissingKeywords(
   return sections;
 }
 
+// Helper to wrap text to fit within a width
+function wrapText(text: string, font: PDFFont, fontSize: number, maxWidth: number): string[] {
+  const words = text.split(' ');
+  const lines: string[] = [];
+  let currentLine = '';
+
+  for (const word of words) {
+    const testLine = currentLine ? `${currentLine} ${word}` : word;
+    const width = font.widthOfTextAtSize(testLine, fontSize);
+
+    if (width <= maxWidth) {
+      currentLine = testLine;
+    } else {
+      if (currentLine) {
+        lines.push(currentLine);
+      }
+      currentLine = word;
+    }
+  }
+
+  if (currentLine) {
+    lines.push(currentLine);
+  }
+
+  return lines;
+}
+
+// PDF Generator class to handle page management
+class PDFGenerator {
+  private doc: PDFDocument;
+  private currentPage: PDFPage;
+  private yPosition: number;
+  private regularFont!: PDFFont;
+  private boldFont!: PDFFont;
+  private italicFont!: PDFFont;
+
+  constructor(doc: PDFDocument) {
+    this.doc = doc;
+    this.currentPage = doc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+    this.yPosition = PAGE_HEIGHT - MARGIN_TOP;
+  }
+
+  async initFonts() {
+    this.regularFont = await this.doc.embedFont(StandardFonts.Helvetica);
+    this.boldFont = await this.doc.embedFont(StandardFonts.HelveticaBold);
+    this.italicFont = await this.doc.embedFont(StandardFonts.HelveticaOblique);
+  }
+
+  private checkNewPage(neededHeight: number) {
+    if (this.yPosition - neededHeight < MARGIN_BOTTOM) {
+      this.currentPage = this.doc.addPage([PAGE_WIDTH, PAGE_HEIGHT]);
+      this.yPosition = PAGE_HEIGHT - MARGIN_TOP;
+    }
+  }
+
+  drawCenteredText(text: string, fontSize: number, bold: boolean = false) {
+    const font = bold ? this.boldFont : this.regularFont;
+    const textWidth = font.widthOfTextAtSize(text, fontSize);
+    const x = (PAGE_WIDTH - textWidth) / 2;
+
+    this.checkNewPage(fontSize + 4);
+    this.currentPage.drawText(text, {
+      x,
+      y: this.yPosition,
+      size: fontSize,
+      font,
+      color: rgb(0, 0, 0),
+    });
+    this.yPosition -= fontSize + 4;
+  }
+
+  drawText(text: string, fontSize: number, options: {
+    bold?: boolean;
+    italic?: boolean;
+    indent?: number;
+    color?: { r: number; g: number; b: number };
+    rightAlign?: string;
+  } = {}) {
+    const font = options.bold ? this.boldFont : options.italic ? this.italicFont : this.regularFont;
+    const x = MARGIN_LEFT + (options.indent || 0);
+    const maxWidth = CONTENT_WIDTH - (options.indent || 0);
+    const color = options.color ? rgb(options.color.r, options.color.g, options.color.b) : rgb(0, 0, 0);
+
+    const lines = wrapText(text, font, fontSize, maxWidth);
+
+    for (const line of lines) {
+      this.checkNewPage(fontSize + 2);
+      this.currentPage.drawText(line, {
+        x,
+        y: this.yPosition,
+        size: fontSize,
+        font,
+        color,
+      });
+
+      // Draw right-aligned text on the same line (for dates)
+      if (options.rightAlign && lines.indexOf(line) === 0) {
+        const rightText = options.rightAlign;
+        const rightWidth = this.regularFont.widthOfTextAtSize(rightText, fontSize - 1);
+        this.currentPage.drawText(rightText, {
+          x: PAGE_WIDTH - MARGIN_RIGHT - rightWidth,
+          y: this.yPosition,
+          size: fontSize - 1,
+          font: this.regularFont,
+          color: rgb(0.33, 0.33, 0.33),
+        });
+      }
+
+      this.yPosition -= fontSize + 2;
+    }
+  }
+
+  drawSectionHeader(title: string) {
+    this.checkNewPage(20);
+    this.yPosition -= 8; // Extra space before section
+
+    // Draw the header text
+    this.currentPage.drawText(title, {
+      x: MARGIN_LEFT,
+      y: this.yPosition,
+      size: 11,
+      font: this.boldFont,
+      color: rgb(0, 0, 0),
+    });
+
+    // Draw underline
+    const textWidth = this.boldFont.widthOfTextAtSize(title, 11);
+    this.currentPage.drawLine({
+      start: { x: MARGIN_LEFT, y: this.yPosition - 2 },
+      end: { x: MARGIN_LEFT + textWidth, y: this.yPosition - 2 },
+      thickness: 0.5,
+      color: rgb(0, 0, 0),
+    });
+
+    this.yPosition -= 16;
+  }
+
+  drawBullet(text: string, fontSize: number = 10) {
+    const bulletChar = '•';
+    const bulletIndent = 15;
+    const textIndent = 25;
+
+    this.checkNewPage(fontSize + 2);
+
+    // Draw bullet
+    this.currentPage.drawText(bulletChar, {
+      x: MARGIN_LEFT + bulletIndent,
+      y: this.yPosition,
+      size: fontSize,
+      font: this.regularFont,
+      color: rgb(0, 0, 0),
+    });
+
+    // Draw wrapped text
+    const maxWidth = CONTENT_WIDTH - textIndent;
+    const lines = wrapText(text, this.regularFont, fontSize, maxWidth);
+
+    for (let i = 0; i < lines.length; i++) {
+      if (i > 0) {
+        this.checkNewPage(fontSize + 2);
+      }
+      this.currentPage.drawText(lines[i], {
+        x: MARGIN_LEFT + textIndent,
+        y: this.yPosition,
+        size: fontSize,
+        font: this.regularFont,
+        color: rgb(0, 0, 0),
+      });
+      this.yPosition -= fontSize + 2;
+    }
+  }
+
+  addSpace(height: number) {
+    this.yPosition -= height;
+  }
+}
+
 // Generate PDF
 export async function generateOptimizedResume(
   data: OptimizedResumeData
@@ -318,12 +474,10 @@ export async function generateOptimizedResume(
 
   // Use stored sections if available, otherwise parse from text
   if (data.parsedSections && data.parsedSections.length > 0) {
-    // Find the first section's start index for contact extraction
     const firstSectionStart = data.parsedSections[0]?.startIndex;
     contact = extractContactInfo(data.resumeText, firstSectionStart);
     sections = convertStoredSections(data.parsedSections);
   } else {
-    // Fallback to text parsing
     const parsed = parseResumeTextFallback(data.resumeText);
     contact = parsed.contact;
     sections = parsed.sections;
@@ -333,125 +487,66 @@ export async function generateOptimizedResume(
   let optimizedSections = applyOptimizations(sections, data.bulletAnalysis);
   optimizedSections = addMissingKeywords(optimizedSections, data.missingKeywords);
 
-  const content: Content[] = [];
+  // Create PDF document
+  const doc = await PDFDocument.create();
+  const generator = new PDFGenerator(doc);
+  await generator.initFonts();
 
   // Name - centered, large
   if (contact.name) {
-    content.push({
-      text: contact.name,
-      fontSize: 20,
-      bold: true,
-      alignment: 'center',
-      margin: [0, 0, 0, 4],
-    } as ContentText);
+    generator.drawCenteredText(contact.name, 20, true);
   }
 
   // Contact info - centered
   for (const line of contact.lines) {
-    content.push({
-      text: line,
-      fontSize: 9,
-      alignment: 'center',
-      color: '#333333',
-      margin: [0, 0, 0, 2],
-    } as ContentText);
+    generator.drawCenteredText(line, 9);
   }
 
-  // Spacer after contact
-  content.push({ text: '', margin: [0, 0, 0, 10] } as ContentText);
+  generator.addSpace(10);
 
   // Sections
   for (const section of optimizedSections) {
-    // Section header with underline
-    content.push({
-      text: section.title,
-      fontSize: 11,
-      bold: true,
-      margin: [0, 8, 0, 4],
-      decoration: 'underline',
-    } as ContentText);
+    generator.drawSectionHeader(section.title);
 
-    // Section content
     for (const entry of section.entries) {
-      // Entry header (title + date on same line if both exist)
+      // Entry header with date
       if (entry.title) {
-        if (entry.date) {
-          content.push({
-            columns: [
-              { text: entry.title, bold: true, fontSize: 10 },
-              { text: entry.date, fontSize: 9, alignment: 'right', color: '#555555' },
-            ],
-            margin: [0, 4, 0, 1],
-          } as ContentColumns);
-        } else {
-          content.push({
-            text: entry.title,
-            bold: true,
-            fontSize: 10,
-            margin: [0, 4, 0, 1],
-          } as ContentText);
-        }
+        generator.drawText(entry.title, 10, {
+          bold: true,
+          rightAlign: entry.date,
+        });
+      } else if (entry.date) {
+        generator.drawText(entry.date, 9, { color: { r: 0.33, g: 0.33, b: 0.33 } });
       }
 
-      // Subtitle (job title, degree, etc)
+      // Subtitle
       if (entry.subtitle) {
-        content.push({
-          text: entry.subtitle,
-          italics: true,
-          fontSize: 10,
-          margin: [0, 0, 0, 2],
-        } as ContentText);
+        generator.drawText(entry.subtitle, 10, { italic: true });
       }
 
       // Content/bullets
       if (entry.bullets.length > 0) {
         if (['skills', 'languages', 'interests'].includes(section.type)) {
-          // Skills-type: comma-separated or as lines
-          content.push({
-            text: entry.bullets.join(', '),
-            fontSize: 10,
-            margin: [0, 2, 0, 4],
-          } as ContentText);
+          // Skills-type: comma-separated
+          generator.drawText(entry.bullets.join(', '), 10);
         } else if (section.type === 'summary') {
           // Summary: paragraph
-          content.push({
-            text: entry.bullets.join(' '),
-            fontSize: 10,
-            margin: [0, 2, 0, 4],
-          } as ContentText);
+          generator.drawText(entry.bullets.join(' '), 10);
         } else {
           // Regular bullets
-          content.push({
-            ul: entry.bullets,
-            fontSize: 10,
-            margin: [15, 2, 0, 4],
-          });
+          for (const bullet of entry.bullets) {
+            generator.drawBullet(bullet);
+          }
         }
       }
+
+      generator.addSpace(4);
     }
   }
 
-  const docDefinition: TDocumentDefinitions = {
-    content,
-    defaultStyle: {
-      font: 'Helvetica',
-      fontSize: 10,
-      lineHeight: 1.15,
-    },
-    pageSize: 'LETTER',
-    pageMargins: [50, 40, 50, 40],
-  };
-
-  const printer = new PdfPrinter(fonts);
-  const pdfDoc = printer.createPdfKitDocument(docDefinition);
-
-  return new Promise((resolve, reject) => {
-    const chunks: Uint8Array[] = [];
-    pdfDoc.on('data', (chunk: Uint8Array) => chunks.push(chunk));
-    pdfDoc.on('end', () => resolve(Buffer.concat(chunks)));
-    pdfDoc.on('error', reject);
-    pdfDoc.end();
-  });
+  // Save and return
+  const pdfBytes = await doc.save();
+  return Buffer.from(pdfBytes);
 }
 
 // Preview data for UI
