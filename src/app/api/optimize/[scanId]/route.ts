@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 import { generateOptimizedResume, getOptimizationPreview } from '@/lib/document-generator';
+import { optimizeBulletsWithAI, generateOptimizedSummary, isAIEnabled } from '@/lib/ai/resume-optimizer';
 import { BulletAnalysis, ResumeSection } from '@/types';
 
 export async function GET(
@@ -50,6 +51,7 @@ export async function GET(
     return NextResponse.json({
       preview,
       isPro: dbUser.subscriptionTier === 'PRO',
+      aiEnabled: isAIEnabled(),
     });
   } catch (error) {
     console.error('Error getting optimization preview:', error);
@@ -110,6 +112,33 @@ export async function POST(
     const foundKeywords = (scan.foundKeywords as unknown as string[]) || [];
     const parsedSections = (scan.parsedSections as unknown as ResumeSection[]) || undefined;
 
+    // AI-powered optimization (if API key is configured)
+    let aiOptimizedBullets;
+    let aiOptimizedSummary;
+
+    if (isAIEnabled()) {
+      // Optimize bullets with AI
+      const aiResult = await optimizeBulletsWithAI(
+        bulletAnalysis,
+        missingKeywords,
+        scan.jobDescription
+      );
+
+      if (aiResult.success && aiResult.optimizedBullets.length > 0) {
+        aiOptimizedBullets = aiResult.optimizedBullets;
+      }
+
+      // Generate optimized summary with AI
+      if (parsedSections) {
+        aiOptimizedSummary = await generateOptimizedSummary(
+          parsedSections.find(s => s.name === 'summary')?.content,
+          parsedSections,
+          missingKeywords,
+          scan.jobDescription
+        ) || undefined;
+      }
+    }
+
     // Generate the optimized resume document
     const buffer = await generateOptimizedResume({
       resumeText: scan.resumeText || '',
@@ -118,6 +147,8 @@ export async function POST(
       foundKeywords,
       fileName: scan.fileName,
       parsedSections,
+      aiOptimizedBullets,
+      aiOptimizedSummary,
     });
 
     // Create a safe filename

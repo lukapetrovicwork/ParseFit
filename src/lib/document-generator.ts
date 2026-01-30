@@ -1,6 +1,12 @@
 import { PDFDocument, StandardFonts, rgb, PDFFont, PDFPage } from 'pdf-lib';
 import { BulletAnalysis, SectionType, ResumeSection } from '@/types';
 
+interface AIOptimizedBullet {
+  original: string;
+  optimized: string;
+  section: string;
+}
+
 interface OptimizedResumeData {
   resumeText: string;
   bulletAnalysis: BulletAnalysis[];
@@ -8,6 +14,8 @@ interface OptimizedResumeData {
   foundKeywords: string[];
   fileName: string;
   parsedSections?: ResumeSection[];
+  aiOptimizedBullets?: AIOptimizedBullet[];
+  aiOptimizedSummary?: string;
 }
 
 interface ProcessedSection {
@@ -226,17 +234,27 @@ function parseResumeTextFallback(resumeText: string): { contact: ContactInfo; se
   return { contact, sections };
 }
 
-// Apply bullet rewrites from analysis
+// Apply bullet rewrites from AI or rule-based analysis
 function applyOptimizations(
   sections: ProcessedSection[],
-  bulletAnalysis: BulletAnalysis[]
+  bulletAnalysis: BulletAnalysis[],
+  aiOptimizedBullets?: AIOptimizedBullet[]
 ): ProcessedSection[] {
   const bulletRewrites = new Map<string, string>();
 
-  for (const analysis of bulletAnalysis) {
-    if (analysis.rewriteSuggestion && analysis.score < 80) {
-      const normalized = analysis.text.toLowerCase().trim().substring(0, 60);
-      bulletRewrites.set(normalized, analysis.rewriteSuggestion);
+  // Prioritize AI-optimized bullets if available
+  if (aiOptimizedBullets && aiOptimizedBullets.length > 0) {
+    for (const aiBullet of aiOptimizedBullets) {
+      const normalized = aiBullet.original.toLowerCase().trim().substring(0, 60);
+      bulletRewrites.set(normalized, aiBullet.optimized);
+    }
+  } else {
+    // Fallback to rule-based rewrites
+    for (const analysis of bulletAnalysis) {
+      if (analysis.rewriteSuggestion && analysis.score < 80) {
+        const normalized = analysis.text.toLowerCase().trim().substring(0, 60);
+        bulletRewrites.set(normalized, analysis.rewriteSuggestion);
+      }
     }
   }
 
@@ -483,9 +501,24 @@ export async function generateOptimizedResume(
     sections = parsed.sections;
   }
 
-  // Apply optimizations
-  let optimizedSections = applyOptimizations(sections, data.bulletAnalysis);
+  // Apply optimizations (AI-powered if available, rule-based otherwise)
+  let optimizedSections = applyOptimizations(sections, data.bulletAnalysis, data.aiOptimizedBullets);
   optimizedSections = addMissingKeywords(optimizedSections, data.missingKeywords);
+
+  // Apply AI-optimized summary if available
+  if (data.aiOptimizedSummary) {
+    const summaryIdx = optimizedSections.findIndex(s => s.type === 'summary');
+    if (summaryIdx >= 0) {
+      optimizedSections[summaryIdx].entries = [{ bullets: [data.aiOptimizedSummary] }];
+    } else {
+      // Add summary section at the beginning if it doesn't exist
+      optimizedSections.unshift({
+        type: 'summary',
+        title: 'SUMMARY',
+        entries: [{ bullets: [data.aiOptimizedSummary] }],
+      });
+    }
+  }
 
   // Create PDF document
   const doc = await PDFDocument.create();
