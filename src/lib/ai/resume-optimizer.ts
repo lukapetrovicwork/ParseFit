@@ -89,6 +89,7 @@ Example: [{"index": 1, "original": "...", "optimized": "..."}]
 No additional text or explanation - just the JSON array.`;
 
   try {
+    console.log('[AI] Calling Anthropic API...');
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 2000,
@@ -100,15 +101,19 @@ No additional text or explanation - just the JSON array.`;
         },
       ],
     });
+    console.log('[AI] API response received');
 
     const content = response.content[0];
     if (content.type !== 'text') {
+      console.log('[AI] Unexpected content type:', content.type);
       throw new Error('Unexpected response type');
     }
 
+    console.log('[AI] Parsing response text...');
     // Parse JSON response
     const jsonMatch = content.text.match(/\[[\s\S]*\]/);
     if (!jsonMatch) {
+      console.log('[AI] Could not find JSON in response:', content.text.substring(0, 200));
       throw new Error('Could not parse AI response');
     }
 
@@ -130,12 +135,15 @@ No additional text or explanation - just the JSON array.`;
       optimizedBullets,
       success: true,
     };
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('[AI] Optimization error:', error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('[AI] Error message:', errorMessage);
+    console.error('[AI] Full error:', JSON.stringify(error, null, 2));
     return {
       optimizedBullets: [],
       success: false,
-      error: error instanceof Error ? error.message : 'AI optimization failed',
+      error: errorMessage,
     };
   }
 }
@@ -191,6 +199,7 @@ REQUIREMENTS:
 OUTPUT: Return ONLY the summary text, nothing else.`;
 
   try {
+    console.log('[AI] Calling Anthropic API for summary...');
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 300,
@@ -202,12 +211,15 @@ OUTPUT: Return ONLY the summary text, nothing else.`;
         },
       ],
     });
+    console.log('[AI] Summary API response received');
 
     const content = response.content[0];
     if (content.type !== 'text') {
+      console.log('[AI] Unexpected summary content type:', content.type);
       return null;
     }
 
+    console.log('[AI] Summary generated successfully');
     return content.text.trim();
   } catch (error) {
     console.error('Summary generation error:', error);
