@@ -7,7 +7,26 @@ interface PDFParseResult {
 }
 
 export async function parsePDF(buffer: Buffer): Promise<PDFParseResult> {
-  const data = await pdf(buffer);
+  let data;
+  try {
+    data = await pdf(buffer);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
+    // Handle specific PDF parsing errors with user-friendly messages
+    if (errorMessage.includes('bad XRef entry') || errorMessage.includes('XRef')) {
+      throw new Error('This PDF has a corrupted structure. Please try re-saving it from your PDF editor or converting it to a new PDF.');
+    }
+    if (errorMessage.includes('password') || errorMessage.includes('encrypted')) {
+      throw new Error('This PDF is password-protected. Please remove the password protection and try again.');
+    }
+    if (errorMessage.includes('Invalid PDF')) {
+      throw new Error('This file does not appear to be a valid PDF. Please check the file and try again.');
+    }
+
+    // Generic error
+    throw new Error(`Could not read this PDF file. Try re-exporting it from your word processor or PDF editor. (${errorMessage})`);
+  }
 
   const hasImages = detectImages(data);
   const hasTables = detectTables(data.text);
