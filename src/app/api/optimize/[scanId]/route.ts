@@ -116,7 +116,12 @@ export async function POST(
     let aiOptimizedBullets;
     let aiOptimizedSummary;
 
+    console.log('[OPTIMIZE] Checking AI status...');
+    console.log('[OPTIMIZE] isAIEnabled:', isAIEnabled());
+    console.log('[OPTIMIZE] bulletAnalysis count:', bulletAnalysis.length);
+
     if (isAIEnabled()) {
+      console.log('[OPTIMIZE] AI is enabled, starting optimization...');
       // Optimize bullets with AI
       const aiResult = await optimizeBulletsWithAI(
         bulletAnalysis,
@@ -137,6 +142,10 @@ export async function POST(
           scan.jobDescription
         ) || undefined;
       }
+
+      console.log('[OPTIMIZE] AI results - bullets:', aiOptimizedBullets?.length || 0, 'summary:', !!aiOptimizedSummary);
+    } else {
+      console.log('[OPTIMIZE] AI is NOT enabled - using rule-based optimization only');
     }
 
     // Generate the optimized resume document

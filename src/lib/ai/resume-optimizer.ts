@@ -43,11 +43,15 @@ export async function optimizeBulletsWithAI(
   }
 
   console.log('[AI] Starting bullet optimization with Claude');
+  console.log('[AI] Total bullets received:', bullets.length);
+  console.log('[AI] Bullet scores:', bullets.map(b => b.score).join(', '));
 
   // Filter bullets that need improvement (score < 80)
   const bulletsToOptimize = bullets.filter(b => b.score < 80).slice(0, 10);
+  console.log('[AI] Bullets needing optimization (score < 80):', bulletsToOptimize.length);
 
   if (bulletsToOptimize.length === 0) {
+    console.log('[AI] All bullets scored 80+, no AI optimization needed');
     return {
       optimizedBullets: [],
       success: true,
