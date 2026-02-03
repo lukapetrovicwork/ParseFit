@@ -91,7 +91,7 @@ No additional text or explanation - just the JSON array.`;
   try {
     console.log('[AI] Calling Anthropic API...');
     const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-5',
       max_tokens: 2000,
       temperature: 0.3,
       messages: [
@@ -201,7 +201,7 @@ OUTPUT: Return ONLY the summary text, nothing else.`;
   try {
     console.log('[AI] Calling Anthropic API for summary...');
     const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-5',
       max_tokens: 300,
       temperature: 0.4,
       messages: [
