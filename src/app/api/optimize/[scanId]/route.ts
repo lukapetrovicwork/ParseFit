@@ -113,8 +113,8 @@ export async function POST(
     const parsedSections = (scan.parsedSections as unknown as ResumeSection[]) || undefined;
 
     // AI-powered optimization (if API key is configured)
-    let aiOptimizedBullets;
-    let aiOptimizedSummary;
+    let aiOptimizedBullets: Array<{ original: string; optimized: string; section: string }> | undefined;
+    let aiOptimizedSummary: string | undefined;
 
     console.log('[OPTIMIZE] Checking AI status...');
     console.log('[OPTIMIZE] isAIEnabled:', isAIEnabled());
