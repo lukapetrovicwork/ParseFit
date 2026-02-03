@@ -2,8 +2,12 @@ import Anthropic from '@anthropic-ai/sdk';
 import { BulletAnalysis, ResumeSection } from '@/types';
 
 // Initialize Anthropic client (optional - only if API key is configured)
-const anthropicKey = process.env.ANTHROPIC_API_KEY;
-const anthropic = anthropicKey ? new Anthropic({ apiKey: anthropicKey }) : null;
+function getAnthropicClient() {
+  const key = process.env.ANTHROPIC_API_KEY;
+  console.log('[AI] Checking for ANTHROPIC_API_KEY:', key ? 'Found' : 'Not found');
+  if (!key) return null;
+  return new Anthropic({ apiKey: key });
+}
 
 export interface OptimizedBullet {
   original: string;
@@ -27,13 +31,18 @@ export async function optimizeBulletsWithAI(
   missingKeywords: string[],
   jobDescription: string
 ): Promise<AIOptimizationResult> {
+  const anthropic = getAnthropicClient();
+
   if (!anthropic) {
+    console.log('[AI] Anthropic client not available - skipping AI optimization');
     return {
       optimizedBullets: [],
       success: false,
       error: 'AI optimization not configured',
     };
   }
+
+  console.log('[AI] Starting bullet optimization with Claude');
 
   // Filter bullets that need improvement (score < 80)
   const bulletsToOptimize = bullets.filter(b => b.score < 80).slice(0, 10);
@@ -111,12 +120,14 @@ No additional text or explanation - just the JSON array.`;
       section: bulletsToOptimize[item.index - 1]?.section || 'experience',
     }));
 
+    console.log('[AI] Successfully optimized', optimizedBullets.length, 'bullets');
+
     return {
       optimizedBullets,
       success: true,
     };
   } catch (error) {
-    console.error('AI optimization error:', error);
+    console.error('[AI] Optimization error:', error);
     return {
       optimizedBullets: [],
       success: false,
@@ -134,9 +145,14 @@ export async function generateOptimizedSummary(
   missingKeywords: string[],
   jobDescription: string
 ): Promise<string | null> {
+  const anthropic = getAnthropicClient();
+
   if (!anthropic) {
+    console.log('[AI] Anthropic client not available - skipping summary generation');
     return null;
   }
+
+  console.log('[AI] Starting summary generation with Claude');
 
   // Extract key info from experience section
   const experienceSection = sections.find(s => s.name === 'experience');
@@ -199,5 +215,7 @@ OUTPUT: Return ONLY the summary text, nothing else.`;
  * Check if AI optimization is available
  */
 export function isAIEnabled(): boolean {
-  return anthropic !== null;
+  const enabled = !!process.env.ANTHROPIC_API_KEY;
+  console.log('[AI] isAIEnabled check:', enabled);
+  return enabled;
 }
