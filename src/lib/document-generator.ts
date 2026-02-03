@@ -72,12 +72,44 @@ function convertStoredSections(storedSections: ResumeSection[]): ProcessedSectio
     });
 }
 
+// Check if line looks like a date range
+function hasDatePattern(line: string): boolean {
+  return /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*\.?\s+\d{4}/i.test(line) ||
+         /\d{1,2}\/\d{4}/i.test(line) ||
+         /\d{4}\s*[-–—]\s*(present|\d{4}|current)/i.test(line) ||
+         /\b(present|current)\s*$/i.test(line);
+}
+
+// Check if line looks like a bullet point
+function isBulletLine(line: string): boolean {
+  return /^[•\-\*\u2022\u2023\u25E6\u2043]\s/.test(line) ||
+         /^\d+\.\s/.test(line); // Numbered lists
+}
+
+// Extract date from a line
+function extractDate(line: string): string | null {
+  // Match common date patterns
+  const patterns = [
+    /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*\.?\s+\d{4}\s*[-–—]\s*(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*\.?\s+\d{4}/i,
+    /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*\.?\s+\d{4}\s*[-–—]\s*(present|current)/i,
+    /\d{4}\s*[-–—]\s*(present|\d{4}|current)/i,
+    /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*\.?\s+\d{4}/i,
+  ];
+
+  for (const pattern of patterns) {
+    const match = line.match(pattern);
+    if (match) return match[0];
+  }
+  return null;
+}
+
 // Parse section content into structured entries
 function parseContentIntoEntries(
   sectionType: string,
   content: string,
   bullets: string[]
 ): SectionEntry[] {
+  // Skills, languages, interests - simple list format
   if (['skills', 'languages', 'interests'].includes(sectionType)) {
     if (bullets.length > 0) {
       return [{ bullets }];
@@ -86,6 +118,7 @@ function parseContentIntoEntries(
     return [{ bullets: lines }];
   }
 
+  // Summary - single paragraph
   if (sectionType === 'summary') {
     const text = bullets.length > 0
       ? bullets.join(' ')
@@ -93,45 +126,105 @@ function parseContentIntoEntries(
     return [{ bullets: [text] }];
   }
 
+  // Experience, Education, Projects, etc. - structured entries
   const contentLines = content.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+
+  // If we have pre-extracted bullets, use a simpler approach
+  if (bullets.length > 0) {
+    // Try to find entry headers (company/school names) and associate bullets
+    const entries: SectionEntry[] = [];
+    let currentEntry: SectionEntry = { bullets: [] };
+    let bulletIndex = 0;
+
+    for (const line of contentLines) {
+      if (isBulletLine(line)) {
+        // Use pre-extracted bullet if available
+        const bulletText = bulletIndex < bullets.length
+          ? bullets[bulletIndex++]
+          : line.replace(/^[•\-\*\u2022\u2023\u25E6\u2043\d+\.]\s*/, '');
+        currentEntry.bullets.push(bulletText);
+      } else {
+        // Non-bullet line - could be title, subtitle, or date
+        const date = extractDate(line);
+
+        if (date && currentEntry.title) {
+          // Date for current entry
+          currentEntry.date = date;
+        } else if (!currentEntry.title) {
+          // First non-bullet line is the title
+          currentEntry.title = line;
+          const extractedDate = extractDate(line);
+          if (extractedDate) {
+            currentEntry.date = extractedDate;
+            // Remove date from title if it was embedded
+            currentEntry.title = line.replace(extractedDate, '').replace(/\s*[-–—|,]\s*$/, '').trim();
+          }
+        } else if (!currentEntry.subtitle && line.length < 80 && !date) {
+          // Second non-bullet line could be subtitle (role, degree, etc.)
+          currentEntry.subtitle = line;
+        } else if (currentEntry.bullets.length > 0 && !isBulletLine(line)) {
+          // We have bullets already and hit a new non-bullet line
+          // This is likely a new entry
+          if (currentEntry.title || currentEntry.bullets.length > 0) {
+            entries.push(currentEntry);
+          }
+          currentEntry = { title: line, bullets: [] };
+          const extractedDate = extractDate(line);
+          if (extractedDate) {
+            currentEntry.date = extractedDate;
+            currentEntry.title = line.replace(extractedDate, '').replace(/\s*[-–—|,]\s*$/, '').trim();
+          }
+        }
+      }
+    }
+
+    // Push the last entry
+    if (currentEntry.title || currentEntry.bullets.length > 0) {
+      entries.push(currentEntry);
+    }
+
+    // If no entries were created, just return bullets as-is
+    if (entries.length === 0 && bullets.length > 0) {
+      return [{ bullets }];
+    }
+
+    return entries;
+  }
+
+  // Fallback: No pre-extracted bullets, parse everything from content
   const entries: SectionEntry[] = [];
   let currentEntry: SectionEntry | null = null;
-  let bulletIndex = 0;
 
   for (const line of contentLines) {
-    const isBullet = /^[•\-\*\u2022\u2023\u25E6\u2043]\s/.test(line);
-    const hasDate = /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\w*\s+\d{4}/i.test(line) ||
-                    /\d{4}\s*[-–—]\s*(present|\d{4})/i.test(line) ||
-                    /\b(present|current)\b/i.test(line);
-    const isShort = line.length < 80;
-
-    if (isBullet) {
-      const bulletText = bulletIndex < bullets.length
-        ? bullets[bulletIndex++]
-        : line.replace(/^[•\-\*\u2022\u2023\u25E6\u2043]\s*/, '');
-
+    if (isBulletLine(line)) {
+      const bulletText = line.replace(/^[•\-\*\u2022\u2023\u25E6\u2043\d+\.]\s*/, '');
       if (currentEntry) {
         currentEntry.bullets.push(bulletText);
       } else {
         currentEntry = { bullets: [bulletText] };
       }
-    } else if (hasDate) {
-      if (currentEntry) {
-        currentEntry.date = line;
-      } else {
-        currentEntry = { title: line, bullets: [] };
-      }
-    } else if (isShort && (!currentEntry || currentEntry.bullets.length > 0)) {
-      if (currentEntry) {
-        entries.push(currentEntry);
-      }
-      currentEntry = { title: line, bullets: [] };
-    } else if (currentEntry && !currentEntry.subtitle && isShort && !hasDate) {
-      currentEntry.subtitle = line;
-    } else if (currentEntry) {
-      currentEntry.bullets.push(line);
     } else {
-      currentEntry = { title: line, bullets: [] };
+      // Non-bullet line
+      const date = extractDate(line);
+      const isShort = line.length < 80;
+
+      if (!currentEntry || (currentEntry.bullets.length > 0 && isShort && !date)) {
+        // Start new entry
+        if (currentEntry) {
+          entries.push(currentEntry);
+        }
+        currentEntry = { title: line, bullets: [] };
+        if (date) {
+          currentEntry.date = date;
+          currentEntry.title = line.replace(date, '').replace(/\s*[-–—|,]\s*$/, '').trim();
+        }
+      } else if (date) {
+        currentEntry.date = date;
+      } else if (!currentEntry.subtitle && isShort) {
+        currentEntry.subtitle = line;
+      } else {
+        currentEntry.bullets.push(line);
+      }
     }
   }
 
@@ -139,31 +232,68 @@ function parseContentIntoEntries(
     entries.push(currentEntry);
   }
 
-  if (entries.length === 0 && bullets.length > 0) {
-    entries.push({ bullets });
-  }
-
-  return entries;
+  return entries.length > 0 ? entries : [{ bullets: [] }];
 }
 
-// Extract contact info from resume text
-function extractContactInfo(resumeText: string, firstSectionStart?: number): ContactInfo {
-  const headerText = firstSectionStart
-    ? resumeText.substring(0, firstSectionStart)
-    : resumeText.substring(0, 500);
+// Section header patterns for detecting where contact info ends
+const SECTION_HEADER_PATTERNS = [
+  /^(professional\s+)?summary$/i,
+  /^(career\s+)?objective$/i,
+  /^(career\s+)?profile$/i,
+  /^(work\s+)?experience$/i,
+  /^(professional\s+)?experience$/i,
+  /^education$/i,
+  /^(technical\s+)?skills?$/i,
+  /^(core\s+)?competencies$/i,
+  /^projects?$/i,
+  /^certifications?$/i,
+  /^awards?$/i,
+  /^publications?$/i,
+  /^languages?$/i,
+  /^interests?$/i,
+  /^references?$/i,
+];
 
-  const lines = headerText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+function isSectionHeader(line: string): boolean {
+  const cleanLine = line.replace(/[:\-_•|]/g, '').trim();
+  return SECTION_HEADER_PATTERNS.some(pattern => pattern.test(cleanLine));
+}
 
-  if (lines.length === 0) {
+// Extract contact info from resume text (lines before first section)
+function extractContactInfo(resumeText: string, firstSectionLineIndex?: number): ContactInfo {
+  const allLines = resumeText.split('\n');
+
+  // Find where the header ends - either at firstSectionLineIndex or when we hit a section header
+  let headerEndLine = firstSectionLineIndex ?? allLines.length;
+
+  // Double-check by scanning for section headers (in case startIndex is wrong)
+  for (let i = 0; i < Math.min(headerEndLine, 20); i++) {
+    const line = allLines[i]?.trim() || '';
+    if (isSectionHeader(line)) {
+      headerEndLine = i;
+      break;
+    }
+  }
+
+  // Get header lines (non-empty lines before the first section)
+  const headerLines = allLines
+    .slice(0, headerEndLine)
+    .map(l => l.trim())
+    .filter(l => l.length > 0);
+
+  if (headerLines.length === 0) {
     return { name: '', lines: [] };
   }
 
-  const name = lines[0];
-  const contactLines: string[] = [];
+  // First line is the name
+  const name = headerLines[0];
 
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i];
-    if (/^(summary|experience|education|skills|projects)/i.test(line)) break;
+  // Rest are contact details (email, phone, location, LinkedIn, etc.)
+  const contactLines: string[] = [];
+  for (let i = 1; i < headerLines.length; i++) {
+    const line = headerLines[i];
+    // Stop if we somehow hit a section header
+    if (isSectionHeader(line)) break;
     contactLines.push(line);
   }
 

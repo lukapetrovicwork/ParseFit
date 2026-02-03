@@ -17,7 +17,7 @@ export function ScoreDisplay({ score }: ScoreDisplayProps) {
         <div className="relative">
           <svg className="h-40 w-40" viewBox="0 0 100 100">
             <circle
-              className="stroke-gray-200"
+              className="stroke-gray-200 dark:stroke-gray-700"
               strokeWidth="8"
               fill="transparent"
               r="42"
@@ -53,7 +53,7 @@ export function ScoreDisplay({ score }: ScoreDisplayProps) {
             <span className={cn('text-4xl font-bold', getScoreColor(score.overall))}>
               {score.overall}
             </span>
-            <span className="text-sm text-gray-500">out of 100</span>
+            <span className="text-sm text-gray-500 dark:text-gray-400">out of 100</span>
           </div>
         </div>
         <p className={cn('mt-4 text-lg font-medium', getScoreColor(score.overall))}>
@@ -104,7 +104,7 @@ function ScoreCard({ title, score, icon: Icon, description }: ScoreCardProps) {
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Icon className="h-4 w-4 text-gray-500" />
+            <Icon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
             <CardTitle className="text-sm font-medium">{title}</CardTitle>
           </div>
           <span className={cn('text-lg font-bold', getScoreColor(score))}>{score}</span>
@@ -124,7 +124,7 @@ function ScoreCard({ title, score, icon: Icon, description }: ScoreCardProps) {
               : 'bg-red-500'
           )}
         />
-        <p className="text-xs text-gray-500">{description}</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400">{description}</p>
       </CardContent>
     </Card>
   );

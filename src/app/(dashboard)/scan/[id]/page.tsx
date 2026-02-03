@@ -112,7 +112,7 @@ export default function ScanDetailPage() {
     return (
       <div className="text-center">
         <h1 className="text-2xl font-bold">Scan Not Found</h1>
-        <p className="mt-2 text-gray-600">
+        <p className="mt-2 text-gray-600 dark:text-gray-400">
           The scan you&apos;re looking for doesn&apos;t exist or has been deleted.
         </p>
         <Link href="/dashboard">
@@ -147,8 +147,8 @@ export default function ScanDetailPage() {
             </Button>
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">{scan.fileName}</h1>
-            <p className="text-gray-600">Scanned {formatDate(scan.createdAt)}</p>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{scan.fileName}</h1>
+            <p className="text-gray-600 dark:text-gray-300">Scanned {formatDate(scan.createdAt)}</p>
           </div>
         </div>
         <div className="flex gap-2">

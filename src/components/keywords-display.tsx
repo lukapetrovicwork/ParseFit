@@ -20,9 +20,9 @@ export function KeywordsDisplay({ matches, foundKeywords, missingKeywords }: Key
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between rounded-lg bg-gray-50 p-4">
+      <div className="flex items-center justify-between rounded-lg bg-gray-50 p-4 dark:bg-gray-800">
         <div>
-          <p className="text-sm text-gray-600">Keyword Match Rate</p>
+          <p className="text-sm text-gray-600 dark:text-gray-400">Keyword Match Rate</p>
           <p className="text-2xl font-bold">
             {foundKeywords.length}/{matches.length}
           </p>
@@ -33,23 +33,23 @@ export function KeywordsDisplay({ matches, foundKeywords, missingKeywords }: Key
       </div>
 
       {missingKeywords.length > 0 && (
-        <Card className="border-red-200 bg-red-50">
+        <Card className="border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/30">
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-red-600" />
-              <CardTitle className="text-base text-red-900">
+              <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
+              <CardTitle className="text-base text-red-900 dark:text-red-200">
                 Missing Keywords ({missingKeywords.length})
               </CardTitle>
             </div>
           </CardHeader>
           <CardContent>
-            <p className="mb-3 text-sm text-red-700">
+            <p className="mb-3 text-sm text-red-700 dark:text-red-300">
               Add these keywords to improve your ATS score:
             </p>
             <div className="space-y-4">
               {categorizedMissing.hardSkills.length > 0 && (
                 <div>
-                  <p className="mb-2 text-xs font-medium text-red-800">Technical Skills</p>
+                  <p className="mb-2 text-xs font-medium text-red-800 dark:text-red-200">Technical Skills</p>
                   <div className="flex flex-wrap gap-2">
                     {categorizedMissing.hardSkills.map((keyword) => (
                       <Badge key={keyword} variant="error">
@@ -62,7 +62,7 @@ export function KeywordsDisplay({ matches, foundKeywords, missingKeywords }: Key
               )}
               {categorizedMissing.tools.length > 0 && (
                 <div>
-                  <p className="mb-2 text-xs font-medium text-red-800">Tools & Technologies</p>
+                  <p className="mb-2 text-xs font-medium text-red-800 dark:text-red-200">Tools & Technologies</p>
                   <div className="flex flex-wrap gap-2">
                     {categorizedMissing.tools.map((keyword) => (
                       <Badge key={keyword} variant="error">
@@ -75,7 +75,7 @@ export function KeywordsDisplay({ matches, foundKeywords, missingKeywords }: Key
               )}
               {categorizedMissing.softSkills.length > 0 && (
                 <div>
-                  <p className="mb-2 text-xs font-medium text-red-800">Soft Skills</p>
+                  <p className="mb-2 text-xs font-medium text-red-800 dark:text-red-200">Soft Skills</p>
                   <div className="flex flex-wrap gap-2">
                     {categorizedMissing.softSkills.map((keyword) => (
                       <Badge key={keyword} variant="warning">
@@ -88,7 +88,7 @@ export function KeywordsDisplay({ matches, foundKeywords, missingKeywords }: Key
               )}
               {categorizedMissing.other.length > 0 && (
                 <div>
-                  <p className="mb-2 text-xs font-medium text-red-800">Other Keywords</p>
+                  <p className="mb-2 text-xs font-medium text-red-800 dark:text-red-200">Other Keywords</p>
                   <div className="flex flex-wrap gap-2">
                     {categorizedMissing.other.map((keyword) => (
                       <Badge key={keyword} variant="outline">
@@ -105,11 +105,11 @@ export function KeywordsDisplay({ matches, foundKeywords, missingKeywords }: Key
       )}
 
       {foundKeywords.length > 0 && (
-        <Card className="border-green-200 bg-green-50">
+        <Card className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/30">
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
-              <CheckCircle2 className="h-5 w-5 text-green-600" />
-              <CardTitle className="text-base text-green-900">
+              <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
+              <CardTitle className="text-base text-green-900 dark:text-green-200">
                 Matched Keywords ({foundKeywords.length})
               </CardTitle>
             </div>
