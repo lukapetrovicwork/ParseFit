@@ -57,6 +57,8 @@
   html {
     /* Prevent horizontal scrolling on mobile */
     overflow-x: hidden;
+    /* Prevent layout shift when dialog opens (reserves space for scrollbar) */
+    scrollbar-gutter: stable;
   }
 
   body {
