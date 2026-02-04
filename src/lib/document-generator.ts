@@ -103,6 +103,35 @@ function extractDate(line: string): string | null {
   return null;
 }
 
+// Check if a line looks like an entry header (company name, project name, etc.)
+function looksLikeEntryHeader(line: string, prevLineWasBlank: boolean): boolean {
+  // After a blank line, shorter lines are more likely to be headers
+  const words = line.split(/\s+/);
+
+  // Lines with dates are likely headers
+  if (extractDate(line)) return true;
+
+  // After a blank line, be more generous
+  if (prevLineWasBlank) {
+    if (words.length <= 5 && line.length < 60) return true;
+  }
+
+  // Very short lines (1-3 words) that look like titles
+  if (words.length <= 3 && line.length < 40) return true;
+
+  // Lines that are all caps might be headers
+  const isAllCaps = line === line.toUpperCase() && /[A-Z]/.test(line) && line.length < 50;
+  if (isAllCaps) return true;
+
+  // Lines ending with common company/org patterns
+  if (/\s+(Inc\.|LLC|Corp\.|Ltd\.|University|College|Co\.)$/i.test(line)) return true;
+
+  // Lines with location patterns like "City, ST" or "City, State"
+  if (/,\s*[A-Z]{2}$/.test(line) && line.length < 60) return true;
+
+  return false;
+}
+
 // Parse section content into structured entries
 function parseContentIntoEntries(
   sectionType: string,
@@ -126,105 +155,176 @@ function parseContentIntoEntries(
     return [{ bullets: [text] }];
   }
 
-  // Experience, Education, Projects, etc. - structured entries
-  const contentLines = content.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  // For experience, education, projects - preserve blank lines as entry separators
+  // Split content into groups separated by blank lines
+  const rawLines = content.split('\n').map(l => l.trim());
+  const entryGroups: string[][] = [];
+  let currentGroup: string[] = [];
 
-  // If we have pre-extracted bullets, use a simpler approach
+  for (const line of rawLines) {
+    if (line === '') {
+      // Blank line - might indicate entry boundary
+      if (currentGroup.length > 0) {
+        entryGroups.push(currentGroup);
+        currentGroup = [];
+      }
+    } else {
+      currentGroup.push(line);
+    }
+  }
+  if (currentGroup.length > 0) {
+    entryGroups.push(currentGroup);
+  }
+
+  // If we got clear entry groups from blank lines, use them
+  if (entryGroups.length > 1) {
+    const entries: SectionEntry[] = [];
+    let bulletIndex = 0;
+
+    for (const group of entryGroups) {
+      const entry: SectionEntry = { bullets: [] };
+      let seenBullet = false;
+
+      for (const line of group) {
+        if (isBulletLine(line)) {
+          const bulletText = bulletIndex < bullets.length
+            ? bullets[bulletIndex++]
+            : line.replace(/^[•\-\*\u2022\u2023\u25E6\u2043\d+\.]\s*/, '');
+          entry.bullets.push(bulletText);
+          seenBullet = true;
+        } else {
+          const date = extractDate(line);
+
+          if (!entry.title) {
+            entry.title = line;
+            if (date) {
+              entry.date = date;
+              entry.title = line.replace(date, '').replace(/\s*[-–—|,]\s*$/, '').trim();
+            }
+          } else if (date && !entry.date) {
+            entry.date = date;
+          } else if (!entry.subtitle && !seenBullet && line.length < 80) {
+            entry.subtitle = line;
+          } else {
+            entry.bullets.push(line);
+            seenBullet = true;
+          }
+        }
+      }
+
+      if (entry.title || entry.bullets.length > 0) {
+        entries.push(entry);
+      }
+    }
+
+    return entries.length > 0 ? entries : [{ bullets }];
+  }
+
+  // No clear blank line separation - fall back to header detection
+  const contentLines = rawLines.filter(l => l.length > 0);
+
   if (bullets.length > 0) {
-    // Try to find entry headers (company/school names) and associate bullets
     const entries: SectionEntry[] = [];
     let currentEntry: SectionEntry = { bullets: [] };
     let bulletIndex = 0;
+    let hasSeenBulletInCurrentEntry = false;
+    let prevWasBlank = true; // Start as if after blank
 
-    for (const line of contentLines) {
+    for (let i = 0; i < contentLines.length; i++) {
+      const line = contentLines[i];
+
       if (isBulletLine(line)) {
-        // Use pre-extracted bullet if available
         const bulletText = bulletIndex < bullets.length
           ? bullets[bulletIndex++]
           : line.replace(/^[•\-\*\u2022\u2023\u25E6\u2043\d+\.]\s*/, '');
         currentEntry.bullets.push(bulletText);
+        hasSeenBulletInCurrentEntry = true;
+        prevWasBlank = false;
       } else {
-        // Non-bullet line - could be title, subtitle, or date
         const date = extractDate(line);
+        const isLikelyHeader = looksLikeEntryHeader(line, prevWasBlank);
 
-        if (date && currentEntry.title) {
-          // Date for current entry
-          currentEntry.date = date;
-        } else if (!currentEntry.title) {
-          // First non-bullet line is the title
+        if (!currentEntry.title) {
           currentEntry.title = line;
-          const extractedDate = extractDate(line);
-          if (extractedDate) {
-            currentEntry.date = extractedDate;
-            // Remove date from title if it was embedded
-            currentEntry.title = line.replace(extractedDate, '').replace(/\s*[-–—|,]\s*$/, '').trim();
+          if (date) {
+            currentEntry.date = date;
+            currentEntry.title = line.replace(date, '').replace(/\s*[-–—|,]\s*$/, '').trim();
           }
-        } else if (!currentEntry.subtitle && line.length < 80 && !date) {
-          // Second non-bullet line could be subtitle (role, degree, etc.)
+        } else if (date && !currentEntry.date) {
+          currentEntry.date = date;
+        } else if (!currentEntry.subtitle && !hasSeenBulletInCurrentEntry && line.length < 80) {
           currentEntry.subtitle = line;
-        } else if (currentEntry.bullets.length > 0 && !isBulletLine(line)) {
-          // We have bullets already and hit a new non-bullet line
-          // This is likely a new entry
+        } else if (hasSeenBulletInCurrentEntry && isLikelyHeader) {
+          // New entry
           if (currentEntry.title || currentEntry.bullets.length > 0) {
             entries.push(currentEntry);
           }
           currentEntry = { title: line, bullets: [] };
-          const extractedDate = extractDate(line);
-          if (extractedDate) {
-            currentEntry.date = extractedDate;
-            currentEntry.title = line.replace(extractedDate, '').replace(/\s*[-–—|,]\s*$/, '').trim();
+          hasSeenBulletInCurrentEntry = false;
+          if (date) {
+            currentEntry.date = date;
+            currentEntry.title = line.replace(date, '').replace(/\s*[-–—|,]\s*$/, '').trim();
           }
+        } else {
+          currentEntry.bullets.push(line);
+          hasSeenBulletInCurrentEntry = true;
         }
+        prevWasBlank = false;
       }
     }
 
-    // Push the last entry
     if (currentEntry.title || currentEntry.bullets.length > 0) {
       entries.push(currentEntry);
     }
 
-    // If no entries were created, just return bullets as-is
-    if (entries.length === 0 && bullets.length > 0) {
-      return [{ bullets }];
-    }
-
-    return entries;
+    return entries.length > 0 ? entries : [{ bullets }];
   }
 
-  // Fallback: No pre-extracted bullets, parse everything from content
+  // No pre-extracted bullets - simpler parsing
   const entries: SectionEntry[] = [];
   let currentEntry: SectionEntry | null = null;
+  let hasSeenBulletInCurrentEntry = false;
+  let prevWasBlank = true;
 
   for (const line of contentLines) {
     if (isBulletLine(line)) {
       const bulletText = line.replace(/^[•\-\*\u2022\u2023\u25E6\u2043\d+\.]\s*/, '');
       if (currentEntry) {
         currentEntry.bullets.push(bulletText);
+        hasSeenBulletInCurrentEntry = true;
       } else {
         currentEntry = { bullets: [bulletText] };
+        hasSeenBulletInCurrentEntry = true;
       }
+      prevWasBlank = false;
     } else {
-      // Non-bullet line
       const date = extractDate(line);
-      const isShort = line.length < 80;
+      const isLikelyHeader = looksLikeEntryHeader(line, prevWasBlank);
 
-      if (!currentEntry || (currentEntry.bullets.length > 0 && isShort && !date)) {
-        // Start new entry
-        if (currentEntry) {
-          entries.push(currentEntry);
-        }
+      if (!currentEntry) {
         currentEntry = { title: line, bullets: [] };
+        hasSeenBulletInCurrentEntry = false;
         if (date) {
           currentEntry.date = date;
           currentEntry.title = line.replace(date, '').replace(/\s*[-–—|,]\s*$/, '').trim();
         }
-      } else if (date) {
+      } else if (hasSeenBulletInCurrentEntry && isLikelyHeader) {
+        entries.push(currentEntry);
+        currentEntry = { title: line, bullets: [] };
+        hasSeenBulletInCurrentEntry = false;
+        if (date) {
+          currentEntry.date = date;
+          currentEntry.title = line.replace(date, '').replace(/\s*[-–—|,]\s*$/, '').trim();
+        }
+      } else if (date && !currentEntry.date) {
         currentEntry.date = date;
-      } else if (!currentEntry.subtitle && isShort) {
+      } else if (!currentEntry.subtitle && !hasSeenBulletInCurrentEntry && line.length < 60) {
         currentEntry.subtitle = line;
       } else {
         currentEntry.bullets.push(line);
+        hasSeenBulletInCurrentEntry = true;
       }
+      prevWasBlank = false;
     }
   }
 
