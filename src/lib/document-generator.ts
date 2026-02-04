@@ -116,6 +116,15 @@ function getBulletContent(line: string): string {
   return line.replace(/^[•\-\*\u2022\u2023\u25E6\u2043\d+\.]\s*/, '');
 }
 
+// Check if a line is just a label without meaningful content (e.g., "Expected Graduation:")
+function isLabelOnlyLine(line: string): boolean {
+  // Lines that are just labels ending with colon
+  if (/^(Expected Graduation|Graduation Date|GPA|Degree|Major|Minor|Concentration|Honors|Awards?):?\s*$/i.test(line)) {
+    return true;
+  }
+  return false;
+}
+
 // Extract date from a line
 function extractDate(line: string): string | null {
   // Match common date patterns
@@ -219,8 +228,28 @@ function parseContentIntoEntries(
   const parseEntryGroup = (group: string[], bulletIdx: { value: number }): SectionEntry => {
     const entry: SectionEntry = { bullets: [] };
     let seenBullet = false;
+    let pendingLabel = ''; // For labels like "Expected Graduation:"
 
-    for (const line of group) {
+    for (let i = 0; i < group.length; i++) {
+      const line = group[i];
+
+      // Skip or combine label-only lines
+      if (isLabelOnlyLine(line)) {
+        // Check if next line has content to combine with
+        const nextLine = group[i + 1];
+        if (nextLine) {
+          const nextDate = extractDate(nextLine);
+          if (nextDate && !entry.date) {
+            // Combine label with next line's date
+            entry.date = nextDate;
+            i++; // Skip next line since we consumed it
+            continue;
+          }
+        }
+        // Otherwise skip the label-only line
+        continue;
+      }
+
       // Check if this looks like a bullet but is actually an entry header
       if (isBulletLine(line) && !isBulletActuallyEntryHeader(line)) {
         const bulletText = bulletIdx.value < bullets.length
@@ -294,13 +323,24 @@ function parseContentIntoEntries(
     // If current entry has content (bullets or subtitle), and this looks like a new header
     if (!hasContent) return false;
 
+    // Lines with " — " or " -- " separator often indicate "Title — Company" format
+    if (/\s+[-–—]+\s+/.test(line) && line.length < 100) {
+      // This looks like a job entry header (e.g., "Software Engineer — Company")
+      return true;
+    }
+
     // Check for company/institution patterns that indicate new entry
-    if (/\b(Inc\.|LLC|Corp\.|Ltd\.|University|College|Institute|School|Company|Technologies|Solutions)\b/i.test(line)) {
+    if (/\b(Inc\.|LLC|Corp\.|Ltd\.|University|College|Institute|School|Company|Technologies|Solutions|Mentorship|Program|Foundation|Organization|Group|Labs?|Studio)\b/i.test(line)) {
       return true;
     }
 
     // Lines with location patterns often start new entries
     if (/,\s*[A-Z]{2}(\s|$|,)/.test(line) && line.length < 70) {
+      return true;
+    }
+
+    // Lines that look like "Role at Company" patterns
+    if (/\b(Intern|Mentee|Fellow|Contractor|Consultant)\b.*\b(at|@)\s+\w/i.test(line)) {
       return true;
     }
 
