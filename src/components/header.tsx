@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { UserButton, SignedIn, SignedOut } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { FileSearch, LayoutDashboard, History, Settings, Menu, X } from 'lucide-react';
+import { FileSearch, LayoutDashboard, History, Settings, Menu, X, BookOpen } from 'lucide-react';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { useState } from 'react';
 
@@ -13,6 +13,7 @@ const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'New Scan', href: '/scan', icon: FileSearch },
   { name: 'History', href: '/history', icon: History },
+  { name: 'How It Works', href: '/how-it-works', icon: BookOpen },
   { name: 'Settings', href: '/settings', icon: Settings },
 ];
 
