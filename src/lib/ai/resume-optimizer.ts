@@ -15,6 +15,28 @@ export interface OptimizedBullet {
   section: string;
 }
 
+// Structure returned by AI for full resume restructuring
+export interface AIResumeEntry {
+  title?: string;
+  subtitle?: string;
+  date?: string;
+  bullets: string[];
+}
+
+export interface AIResumeSection {
+  type: string;
+  title: string;
+  entries: AIResumeEntry[];
+}
+
+export interface AIResumeStructure {
+  contact: {
+    name: string;
+    lines: string[];
+  };
+  sections: AIResumeSection[];
+}
+
 export interface AIOptimizationResult {
   optimizedBullets: OptimizedBullet[];
   optimizedSummary?: string;
@@ -234,4 +256,181 @@ export function isAIEnabled(): boolean {
   const enabled = !!process.env.ANTHROPIC_API_KEY;
   console.log('[AI] isAIEnabled check:', enabled);
   return enabled;
+}
+
+/**
+ * Restructures entire resume using Claude AI
+ * Sends full resume text and gets back properly structured JSON
+ * This bypasses problematic programmatic parsing
+ */
+export async function restructureResumeWithAI(
+  resumeText: string,
+  missingKeywords: string[],
+  jobDescription: string,
+  bulletAnalysis: BulletAnalysis[]
+): Promise<AIResumeStructure | null> {
+  const anthropic = getAnthropicClient();
+
+  if (!anthropic) {
+    console.log('[AI] Anthropic client not available - cannot restructure resume');
+    return null;
+  }
+
+  console.log('[AI] Starting full resume restructuring with Claude Sonnet');
+
+  // Get bullets that need improvement
+  const weakBullets = bulletAnalysis
+    .filter(b => b.score < 80)
+    .map(b => ({ text: b.text, section: b.section }))
+    .slice(0, 15);
+
+  const keywordsToInclude = missingKeywords.slice(0, 10).join(', ');
+
+  const prompt = `You are an expert resume writer and ATS (Applicant Tracking System) optimization specialist.
+
+TASK: Parse and optimize the following resume. Return a properly structured JSON object.
+
+RESUME TEXT:
+${resumeText}
+
+JOB DESCRIPTION:
+${jobDescription.substring(0, 2000)}
+
+MISSING KEYWORDS TO INCORPORATE (where naturally relevant):
+${keywordsToInclude}
+
+WEAK BULLETS TO REWRITE (improve these with STAR method and metrics):
+${weakBullets.map(b => `- [${b.section}] "${b.text}"`).join('\n')}
+
+INSTRUCTIONS:
+1. Parse the resume into proper sections (Summary, Experience, Education, Skills, Projects, etc.)
+2. For each experience/project entry, identify the title, company/subtitle, date, and bullets
+3. REWRITE weak bullets using strong action verbs and STAR method (Situation, Task, Action, Result)
+4. Add quantifiable metrics where possible (%, $, numbers)
+5. Naturally incorporate missing keywords into relevant bullets
+6. Keep all other content exactly as-is (especially contact info, education details, skills)
+7. Preserve ALL text - do not truncate or delete any information
+8. Keep bullets under 150 characters each
+
+OUTPUT FORMAT - Return ONLY valid JSON matching this exact structure:
+{
+  "contact": {
+    "name": "Full Name",
+    "lines": ["email@example.com", "phone", "location", "linkedin", "other contact info"]
+  },
+  "sections": [
+    {
+      "type": "summary",
+      "title": "SUMMARY",
+      "entries": [{"bullets": ["Professional summary text here..."]}]
+    },
+    {
+      "type": "experience",
+      "title": "EXPERIENCE",
+      "entries": [
+        {
+          "title": "Company Name",
+          "subtitle": "Job Title",
+          "date": "Jan 2023 - Present",
+          "bullets": ["Bullet 1", "Bullet 2"]
+        }
+      ]
+    },
+    {
+      "type": "education",
+      "title": "EDUCATION",
+      "entries": [
+        {
+          "title": "University Name",
+          "subtitle": "Degree and Major",
+          "date": "Expected May 2026",
+          "bullets": ["GPA: 3.8", "Relevant coursework or honors"]
+        }
+      ]
+    },
+    {
+      "type": "skills",
+      "title": "SKILLS",
+      "entries": [{"bullets": ["Skill 1, Skill 2, Skill 3"]}]
+    },
+    {
+      "type": "projects",
+      "title": "PROJECTS",
+      "entries": [
+        {
+          "title": "Project Name",
+          "subtitle": "Technologies Used",
+          "date": "Date if available",
+          "bullets": ["Description bullet 1", "Description bullet 2"]
+        }
+      ]
+    }
+  ]
+}
+
+CRITICAL RULES:
+- Return ONLY the JSON object, no markdown code blocks, no explanation
+- Preserve all original information - do not remove or truncate anything
+- For education: combine "Expected Graduation: May 2026" into just "Expected May 2026" as the date
+- For skills: keep as comma-separated list in a single bullet
+- Section types must be lowercase: summary, experience, education, skills, projects, certifications, etc.`;
+
+  try {
+    console.log('[AI] Calling Anthropic API for full resume restructuring...');
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-5',
+      max_tokens: 8000,
+      temperature: 0.2,
+      messages: [
+        {
+          role: 'user',
+          content: prompt,
+        },
+      ],
+    });
+    console.log('[AI] Resume restructuring API response received');
+
+    const content = response.content[0];
+    if (content.type !== 'text') {
+      console.log('[AI] Unexpected content type:', content.type);
+      throw new Error('Unexpected response type');
+    }
+
+    console.log('[AI] Parsing structured resume response...');
+
+    // Try to extract JSON from the response
+    let jsonText = content.text.trim();
+
+    // Remove markdown code blocks if present
+    if (jsonText.startsWith('```json')) {
+      jsonText = jsonText.slice(7);
+    } else if (jsonText.startsWith('```')) {
+      jsonText = jsonText.slice(3);
+    }
+    if (jsonText.endsWith('```')) {
+      jsonText = jsonText.slice(0, -3);
+    }
+    jsonText = jsonText.trim();
+
+    const structuredResume = JSON.parse(jsonText) as AIResumeStructure;
+
+    // Validate the structure
+    if (!structuredResume.contact || !structuredResume.sections) {
+      throw new Error('Invalid resume structure returned by AI');
+    }
+
+    console.log('[AI] Successfully restructured resume with', structuredResume.sections.length, 'sections');
+
+    // Log section details
+    for (const section of structuredResume.sections) {
+      console.log(`[AI] Section: ${section.type} - ${section.entries.length} entries`);
+    }
+
+    return structuredResume;
+  } catch (error: unknown) {
+    console.error('[AI] Resume restructuring error:', error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('[AI] Error message:', errorMessage);
+    return null;
+  }
 }

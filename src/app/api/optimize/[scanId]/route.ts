@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 import { generateOptimizedResume, getOptimizationPreview } from '@/lib/document-generator';
-import { optimizeBulletsWithAI, generateOptimizedSummary, isAIEnabled } from '@/lib/ai/resume-optimizer';
+import { restructureResumeWithAI, isAIEnabled, AIResumeStructure } from '@/lib/ai/resume-optimizer';
 import { BulletAnalysis, ResumeSection } from '@/types';
 
 export async function GET(
@@ -112,40 +112,31 @@ export async function POST(
     const foundKeywords = (scan.foundKeywords as unknown as string[]) || [];
     const parsedSections = (scan.parsedSections as unknown as ResumeSection[]) || undefined;
 
-    // AI-powered optimization (if API key is configured)
-    let aiOptimizedBullets: Array<{ original: string; optimized: string; section: string }> | undefined;
-    let aiOptimizedSummary: string | undefined;
+    // AI-powered full resume restructuring (if API key is configured)
+    let aiResumeStructure: AIResumeStructure | undefined;
 
     console.log('[OPTIMIZE] Checking AI status...');
     console.log('[OPTIMIZE] isAIEnabled:', isAIEnabled());
-    console.log('[OPTIMIZE] bulletAnalysis count:', bulletAnalysis.length);
 
     if (isAIEnabled()) {
-      console.log('[OPTIMIZE] AI is enabled, starting optimization...');
-      // Optimize bullets with AI
-      const aiResult = await optimizeBulletsWithAI(
-        bulletAnalysis,
+      console.log('[OPTIMIZE] AI is enabled, starting full resume restructuring with Claude Sonnet...');
+
+      // Use the new AI restructuring that sends entire resume to Claude
+      const aiResult = await restructureResumeWithAI(
+        scan.resumeText || '',
         missingKeywords,
-        scan.jobDescription
+        scan.jobDescription,
+        bulletAnalysis
       );
 
-      if (aiResult.success && aiResult.optimizedBullets.length > 0) {
-        aiOptimizedBullets = aiResult.optimizedBullets;
+      if (aiResult) {
+        aiResumeStructure = aiResult;
+        console.log('[OPTIMIZE] AI restructuring successful - sections:', aiResumeStructure.sections.length);
+      } else {
+        console.log('[OPTIMIZE] AI restructuring failed - falling back to programmatic parsing');
       }
-
-      // Generate optimized summary with AI
-      if (parsedSections) {
-        aiOptimizedSummary = await generateOptimizedSummary(
-          parsedSections.find(s => s.name === 'summary')?.content,
-          parsedSections,
-          missingKeywords,
-          scan.jobDescription
-        ) || undefined;
-      }
-
-      console.log('[OPTIMIZE] AI results - bullets:', aiOptimizedBullets?.length || 0, 'summary:', !!aiOptimizedSummary);
     } else {
-      console.log('[OPTIMIZE] AI is NOT enabled - using rule-based optimization only');
+      console.log('[OPTIMIZE] AI is NOT enabled - using programmatic parsing');
     }
 
     // Generate the optimized resume document
@@ -156,8 +147,7 @@ export async function POST(
       foundKeywords,
       fileName: scan.fileName,
       parsedSections,
-      aiOptimizedBullets,
-      aiOptimizedSummary,
+      aiResumeStructure,
     });
 
     // Create a safe filename

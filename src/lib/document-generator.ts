@@ -1,5 +1,6 @@
 import { PDFDocument, StandardFonts, rgb, PDFFont, PDFPage } from 'pdf-lib';
 import { BulletAnalysis, SectionType, ResumeSection } from '@/types';
+import { AIResumeStructure } from '@/lib/ai/resume-optimizer';
 
 interface AIOptimizedBullet {
   original: string;
@@ -16,6 +17,8 @@ interface OptimizedResumeData {
   parsedSections?: ResumeSection[];
   aiOptimizedBullets?: AIOptimizedBullet[];
   aiOptimizedSummary?: string;
+  // New: AI-restructured resume (bypasses programmatic parsing)
+  aiResumeStructure?: AIResumeStructure;
 }
 
 interface ProcessedSection {
@@ -1027,35 +1030,55 @@ export async function generateOptimizedResume(
   data: OptimizedResumeData
 ): Promise<Buffer> {
   let contact: ContactInfo;
-  let sections: ProcessedSection[];
+  let optimizedSections: ProcessedSection[];
 
-  // Use stored sections if available, otherwise parse from text
-  if (data.parsedSections && data.parsedSections.length > 0) {
-    const firstSectionStart = data.parsedSections[0]?.startIndex;
-    contact = extractContactInfo(data.resumeText, firstSectionStart);
-    sections = convertStoredSections(data.parsedSections);
+  // NEW: If AI-structured resume is available, use it directly (bypasses all parsing)
+  if (data.aiResumeStructure) {
+    console.log('[PDF] Using AI-restructured resume data');
+    contact = data.aiResumeStructure.contact;
+    optimizedSections = data.aiResumeStructure.sections.map(section => ({
+      type: section.type,
+      title: section.title,
+      entries: section.entries.map(entry => ({
+        title: entry.title,
+        subtitle: entry.subtitle,
+        date: entry.date,
+        bullets: entry.bullets,
+      })),
+    }));
   } else {
-    const parsed = parseResumeTextFallback(data.resumeText);
-    contact = parsed.contact;
-    sections = parsed.sections;
-  }
+    // Fallback: Use programmatic parsing (legacy path)
+    console.log('[PDF] Using programmatic parsing (legacy path)');
+    let sections: ProcessedSection[];
 
-  // Apply optimizations (AI-powered if available, rule-based otherwise)
-  let optimizedSections = applyOptimizations(sections, data.bulletAnalysis, data.aiOptimizedBullets);
-  optimizedSections = addMissingKeywords(optimizedSections, data.missingKeywords);
-
-  // Apply AI-optimized summary if available
-  if (data.aiOptimizedSummary) {
-    const summaryIdx = optimizedSections.findIndex(s => s.type === 'summary');
-    if (summaryIdx >= 0) {
-      optimizedSections[summaryIdx].entries = [{ bullets: [data.aiOptimizedSummary] }];
+    // Use stored sections if available, otherwise parse from text
+    if (data.parsedSections && data.parsedSections.length > 0) {
+      const firstSectionStart = data.parsedSections[0]?.startIndex;
+      contact = extractContactInfo(data.resumeText, firstSectionStart);
+      sections = convertStoredSections(data.parsedSections);
     } else {
-      // Add summary section at the beginning if it doesn't exist
-      optimizedSections.unshift({
-        type: 'summary',
-        title: 'SUMMARY',
-        entries: [{ bullets: [data.aiOptimizedSummary] }],
-      });
+      const parsed = parseResumeTextFallback(data.resumeText);
+      contact = parsed.contact;
+      sections = parsed.sections;
+    }
+
+    // Apply optimizations (AI-powered if available, rule-based otherwise)
+    optimizedSections = applyOptimizations(sections, data.bulletAnalysis, data.aiOptimizedBullets);
+    optimizedSections = addMissingKeywords(optimizedSections, data.missingKeywords);
+
+    // Apply AI-optimized summary if available
+    if (data.aiOptimizedSummary) {
+      const summaryIdx = optimizedSections.findIndex(s => s.type === 'summary');
+      if (summaryIdx >= 0) {
+        optimizedSections[summaryIdx].entries = [{ bullets: [data.aiOptimizedSummary] }];
+      } else {
+        // Add summary section at the beginning if it doesn't exist
+        optimizedSections.unshift({
+          type: 'summary',
+          title: 'SUMMARY',
+          entries: [{ bullets: [data.aiOptimizedSummary] }],
+        });
+      }
     }
   }
 
