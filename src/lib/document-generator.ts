@@ -118,11 +118,44 @@ function getBulletContent(line: string): string {
 
 // Check if a line is just a label without meaningful content (e.g., "Expected Graduation:")
 function isLabelOnlyLine(line: string): boolean {
-  // Lines that are just labels ending with colon
-  if (/^(Expected Graduation|Graduation Date|GPA|Degree|Major|Minor|Concentration|Honors|Awards?):?\s*$/i.test(line)) {
-    return true;
+  const trimmed = line.trim();
+  // Lines that are just labels (with or without colon)
+  const labelPatterns = [
+    /^expected\s+graduation:?\s*$/i,
+    /^graduation\s*(date)?:?\s*$/i,
+    /^gpa:?\s*$/i,
+    /^degree:?\s*$/i,
+    /^major:?\s*$/i,
+    /^minor:?\s*$/i,
+    /^concentration:?\s*$/i,
+    /^honors?:?\s*$/i,
+    /^awards?:?\s*$/i,
+    /^relevant\s+coursework:?\s*$/i,
+  ];
+  return labelPatterns.some(pattern => pattern.test(trimmed));
+}
+
+// Strip common label prefixes from a line (e.g., "Expected Graduation: May 2026" -> "May 2026")
+function stripLabelPrefix(line: string): string {
+  const trimmed = line.trim();
+  const labelPrefixes = [
+    /^expected\s+graduation:\s*/i,
+    /^graduation\s*(date)?:\s*/i,
+    /^gpa:\s*/i,
+    /^degree:\s*/i,
+    /^major:\s*/i,
+    /^minor:\s*/i,
+    /^concentration:\s*/i,
+    /^honors?:\s*/i,
+    /^awards?:\s*/i,
+    /^relevant\s+coursework:\s*/i,
+  ];
+  for (const prefix of labelPrefixes) {
+    if (prefix.test(trimmed)) {
+      return trimmed.replace(prefix, '');
+    }
   }
-  return false;
+  return trimmed;
 }
 
 // Check if a line looks like a continuation of the previous line (broken mid-sentence)
@@ -313,7 +346,11 @@ function parseContentIntoEntries(
         // Treat as non-bullet line (including fake bullets that are entry headers)
         const actualLine = isBulletLine(line) ? getBulletContent(line) : line;
         const date = extractDate(actualLine);
-        const lineWithoutDate = date ? actualLine.replace(date, '').replace(/\s*[-–—|,]\s*$/, '').trim() : null;
+        // Remove date and strip any label prefix (e.g., "Expected Graduation:")
+        let lineWithoutDate = date ? actualLine.replace(date, '').replace(/\s*[-–—|,]\s*$/, '').trim() : null;
+        if (lineWithoutDate) {
+          lineWithoutDate = stripLabelPrefix(lineWithoutDate);
+        }
 
         if (!entry.title) {
           // First line becomes title
@@ -326,18 +363,18 @@ function parseContentIntoEntries(
         } else if (date && !entry.date) {
           // Line with date - save date and remaining content
           entry.date = date;
-          if (lineWithoutDate && lineWithoutDate.length > 0) {
+          if (lineWithoutDate && lineWithoutDate.length > 0 && !isLabelOnlyLine(lineWithoutDate)) {
             if (!entry.subtitle && !seenBullet) {
               entry.subtitle = lineWithoutDate;
             } else {
               entry.bullets.push(lineWithoutDate);
             }
           }
-        } else if (!entry.subtitle && !seenBullet && actualLine.length < 80) {
-          // Second non-bullet line becomes subtitle
-          entry.subtitle = actualLine;
-        } else {
-          // Everything else is content
+        } else if (!entry.subtitle && !seenBullet && actualLine.length < 80 && !isLabelOnlyLine(actualLine)) {
+          // Second non-bullet line becomes subtitle (but not if it's just a label)
+          entry.subtitle = stripLabelPrefix(actualLine);
+        } else if (!isLabelOnlyLine(actualLine)) {
+          // Everything else is content (skip label-only lines)
           entry.bullets.push(actualLine);
           seenBullet = true;
         }
@@ -444,7 +481,11 @@ function parseContentIntoEntries(
       }
 
       const date = extractDate(line);
-      const lineWithoutDate = date ? line.replace(date, '').replace(/\s*[-–—|,]\s*$/, '').trim() : null;
+      // Remove date and strip any label prefix
+      let lineWithoutDate = date ? line.replace(date, '').replace(/\s*[-–—|,]\s*$/, '').trim() : null;
+      if (lineWithoutDate) {
+        lineWithoutDate = stripLabelPrefix(lineWithoutDate);
+      }
 
       if (isBulletLine(line)) {
         const bulletText = bulletIndex < bullets.length
@@ -478,7 +519,7 @@ function parseContentIntoEntries(
         prevWasBlank = false;
       } else if (date && !currentEntry.date) {
         currentEntry.date = date;
-        if (lineWithoutDate && lineWithoutDate.length > 0) {
+        if (lineWithoutDate && lineWithoutDate.length > 0 && !isLabelOnlyLine(lineWithoutDate)) {
           if (!currentEntry.subtitle && !hasContentInEntry) {
             currentEntry.subtitle = lineWithoutDate;
           } else {
@@ -487,10 +528,10 @@ function parseContentIntoEntries(
           }
         }
         prevWasBlank = false;
-      } else if (!currentEntry.subtitle && !hasContentInEntry && line.length < 80) {
+      } else if (!currentEntry.subtitle && !hasContentInEntry && line.length < 80 && !isLabelOnlyLine(line)) {
         currentEntry.subtitle = line;
         prevWasBlank = false;
-      } else {
+      } else if (!isLabelOnlyLine(line)) {
         currentEntry.bullets.push(line);
         hasContentInEntry = true;
         prevWasBlank = false;
@@ -537,7 +578,11 @@ function parseContentIntoEntries(
     }
 
     const date = extractDate(line);
-    const lineWithoutDate = date ? line.replace(date, '').replace(/\s*[-–—|,]\s*$/, '').trim() : null;
+    // Remove date and strip any label prefix
+    let lineWithoutDate = date ? line.replace(date, '').replace(/\s*[-–—|,]\s*$/, '').trim() : null;
+    if (lineWithoutDate) {
+      lineWithoutDate = stripLabelPrefix(lineWithoutDate);
+    }
 
     if (isBulletLine(line)) {
       const bulletText = getBulletContent(line);
@@ -573,7 +618,7 @@ function parseContentIntoEntries(
       prevWasBlank = false;
     } else if (date && !currentEntry.date) {
       currentEntry.date = date;
-      if (lineWithoutDate && lineWithoutDate.length > 0) {
+      if (lineWithoutDate && lineWithoutDate.length > 0 && !isLabelOnlyLine(lineWithoutDate)) {
         if (!currentEntry.subtitle && !hasContentInEntry) {
           currentEntry.subtitle = lineWithoutDate;
         } else {
@@ -582,10 +627,10 @@ function parseContentIntoEntries(
         }
       }
       prevWasBlank = false;
-    } else if (!currentEntry.subtitle && !hasContentInEntry && line.length < 60) {
+    } else if (!currentEntry.subtitle && !hasContentInEntry && line.length < 60 && !isLabelOnlyLine(line)) {
       currentEntry.subtitle = line;
       prevWasBlank = false;
-    } else {
+    } else if (!isLabelOnlyLine(line)) {
       currentEntry.bullets.push(line);
       hasContentInEntry = true;
       prevWasBlank = false;
