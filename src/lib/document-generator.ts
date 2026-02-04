@@ -86,6 +86,36 @@ function isBulletLine(line: string): boolean {
          /^\d+\.\s/.test(line); // Numbered lists
 }
 
+// Check if a bullet-prefixed line is actually a job/entry header (not a real bullet)
+function isBulletActuallyEntryHeader(line: string): boolean {
+  // Remove the bullet prefix to analyze the content
+  const content = line.replace(/^[•\-\*\u2022\u2023\u25E6\u2043\d+\.]\s*/, '').trim();
+
+  // Check for job title patterns with company/org (e.g., "Software Engineer -- Company")
+  if (/\s+[-–—]+\s+/.test(content)) {
+    // Has a separator like " -- " which often separates title from company
+    return true;
+  }
+
+  // Check for role patterns like "Intern", "Mentee", "Fellow" with organization context
+  if (/\b(Intern|Mentee|Fellow|Contractor|Consultant|Freelancer)\b/i.test(content) &&
+      /\b(at|@|--|–|—)\b/i.test(content)) {
+    return true;
+  }
+
+  // Check for patterns like "Role at/@ Company" or "Role, Company"
+  if (/\b(Engineer|Developer|Analyst|Designer|Manager|Director|Lead|Specialist)\b.*\b(at|@)\s+\w/i.test(content)) {
+    return true;
+  }
+
+  return false;
+}
+
+// Get bullet text content (without the bullet prefix)
+function getBulletContent(line: string): string {
+  return line.replace(/^[•\-\*\u2022\u2023\u25E6\u2043\d+\.]\s*/, '');
+}
+
 // Extract date from a line
 function extractDate(line: string): string | null {
   // Match common date patterns
@@ -191,15 +221,18 @@ function parseContentIntoEntries(
     let seenBullet = false;
 
     for (const line of group) {
-      if (isBulletLine(line)) {
+      // Check if this looks like a bullet but is actually an entry header
+      if (isBulletLine(line) && !isBulletActuallyEntryHeader(line)) {
         const bulletText = bulletIdx.value < bullets.length
           ? bullets[bulletIdx.value++]
-          : line.replace(/^[•\-\*\u2022\u2023\u25E6\u2043\d+\.]\s*/, '');
+          : getBulletContent(line);
         entry.bullets.push(bulletText);
         seenBullet = true;
       } else {
-        const date = extractDate(line);
-        const lineWithoutDate = date ? line.replace(date, '').replace(/\s*[-–—|,]\s*$/, '').trim() : null;
+        // Treat as non-bullet line (including fake bullets that are entry headers)
+        const actualLine = isBulletLine(line) ? getBulletContent(line) : line;
+        const date = extractDate(actualLine);
+        const lineWithoutDate = date ? actualLine.replace(date, '').replace(/\s*[-–—|,]\s*$/, '').trim() : null;
 
         if (!entry.title) {
           // First line becomes title
@@ -207,7 +240,7 @@ function parseContentIntoEntries(
             entry.date = date;
             entry.title = lineWithoutDate || '';
           } else {
-            entry.title = line;
+            entry.title = actualLine;
           }
         } else if (date && !entry.date) {
           // Line with date - save date and remaining content
@@ -219,12 +252,12 @@ function parseContentIntoEntries(
               entry.bullets.push(lineWithoutDate);
             }
           }
-        } else if (!entry.subtitle && !seenBullet && line.length < 80) {
+        } else if (!entry.subtitle && !seenBullet && actualLine.length < 80) {
           // Second non-bullet line becomes subtitle
-          entry.subtitle = line;
+          entry.subtitle = actualLine;
         } else {
           // Everything else is content
-          entry.bullets.push(line);
+          entry.bullets.push(actualLine);
           seenBullet = true;
         }
       }
@@ -292,13 +325,34 @@ function parseContentIntoEntries(
 
     for (let i = 0; i < contentLines.length; i++) {
       const line = contentLines[i];
+
+      // Check if a bullet-formatted line is actually an entry header
+      if (isBulletLine(line) && isBulletActuallyEntryHeader(line)) {
+        // This bullet is actually a new entry - start new entry
+        if (currentEntry.title || currentEntry.bullets.length > 0) {
+          entries.push(currentEntry);
+        }
+        const content = getBulletContent(line);
+        const date = extractDate(content);
+        currentEntry = { bullets: [] };
+        hasContentInEntry = false;
+        if (date) {
+          currentEntry.date = date;
+          currentEntry.title = content.replace(date, '').replace(/\s*[-–—|,]\s*$/, '').trim();
+        } else {
+          currentEntry.title = content;
+        }
+        prevWasBlank = false;
+        continue;
+      }
+
       const date = extractDate(line);
       const lineWithoutDate = date ? line.replace(date, '').replace(/\s*[-–—|,]\s*$/, '').trim() : null;
 
       if (isBulletLine(line)) {
         const bulletText = bulletIndex < bullets.length
           ? bullets[bulletIndex++]
-          : line.replace(/^[•\-\*\u2022\u2023\u25E6\u2043\d+\.]\s*/, '');
+          : getBulletContent(line);
         currentEntry.bullets.push(bulletText);
         hasContentInEntry = true;
         prevWasBlank = false;
@@ -360,11 +414,31 @@ function parseContentIntoEntries(
   let prevWasBlank = true;
 
   for (const line of contentLines) {
+    // Check if a bullet-formatted line is actually an entry header
+    if (isBulletLine(line) && isBulletActuallyEntryHeader(line)) {
+      // This bullet is actually a new entry - start new entry
+      if (currentEntry && (currentEntry.title || currentEntry.bullets.length > 0)) {
+        entries.push(currentEntry);
+      }
+      const content = getBulletContent(line);
+      const date = extractDate(content);
+      currentEntry = { bullets: [] };
+      hasContentInEntry = false;
+      if (date) {
+        currentEntry.date = date;
+        currentEntry.title = content.replace(date, '').replace(/\s*[-–—|,]\s*$/, '').trim();
+      } else {
+        currentEntry.title = content;
+      }
+      prevWasBlank = false;
+      continue;
+    }
+
     const date = extractDate(line);
     const lineWithoutDate = date ? line.replace(date, '').replace(/\s*[-–—|,]\s*$/, '').trim() : null;
 
     if (isBulletLine(line)) {
-      const bulletText = line.replace(/^[•\-\*\u2022\u2023\u25E6\u2043\d+\.]\s*/, '');
+      const bulletText = getBulletContent(line);
       if (currentEntry) {
         currentEntry.bullets.push(bulletText);
         hasContentInEntry = true;
