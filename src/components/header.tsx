@@ -57,6 +57,14 @@ export function Header() {
           </div>
 
           <div className="flex items-center gap-4">
+            <SignedOut>
+              <Link
+                href="/how-it-works"
+                className="hidden text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white sm:block"
+              >
+                How It Works
+              </Link>
+            </SignedOut>
             <ThemeToggle />
             <SignedIn>
               <UserButton

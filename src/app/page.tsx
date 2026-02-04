@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   ArrowRight,
   Star,
+  ChevronDown,
 } from 'lucide-react';
 import type { Metadata } from 'next';
 
@@ -162,6 +163,107 @@ export default function HomePage() {
           </div>
         </section>
 
+        {/* FAQ Section */}
+        <section className="border-t px-4 py-16 sm:px-6 lg:px-8 dark:border-gray-700">
+          <div className="mx-auto max-w-3xl">
+            <h2 className="text-center text-3xl font-bold text-gray-900 dark:text-white">
+              Frequently Asked Questions
+            </h2>
+            <p className="mx-auto mt-4 max-w-2xl text-center text-gray-600 dark:text-gray-300">
+              Everything you need to know about ATS resume scanning
+            </p>
+
+            <div className="mt-12 space-y-4">
+              <FAQItem
+                question="What is an ATS and why does it matter?"
+                answer="An Applicant Tracking System (ATS) is software used by employers to filter and rank job applications. Over 98% of Fortune 500 companies use an ATS, and about 75% of resumes are rejected before a human ever sees them. Optimizing your resume for ATS is crucial to getting past this first screening."
+              />
+              <FAQItem
+                question="How does ParseFit scan my resume?"
+                answer="ParseFit analyzes your resume against the job description you provide. We extract keywords, check formatting compatibility, evaluate section structure, and compare your skills against job requirements. Our AI then provides a compatibility score and actionable suggestions to improve your resume."
+              />
+              <FAQItem
+                question="What file formats are supported?"
+                answer="We support PDF and DOCX file formats, which are the most commonly accepted formats by ATS systems. We recommend using a simple, clean format without tables, columns, or graphics for best results."
+              />
+              <FAQItem
+                question="Is my resume data secure?"
+                answer="Yes, your privacy is our priority. Your resume is processed securely and we do not store your resume content after analysis. All data transmission is encrypted using industry-standard protocols."
+              />
+              <FAQItem
+                question="How many free scans do I get?"
+                answer="Free accounts include 3 resume scans per month. This resets at the beginning of each month. For unlimited scans and additional features, you can upgrade to our Pro plan."
+              />
+              <FAQItem
+                question="What makes a good ATS score?"
+                answer="A score of 80 or above is generally considered good and means your resume is well-optimized for the job. Scores between 60-80 indicate room for improvement, while scores below 60 suggest significant changes are needed to pass ATS filters."
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* FAQ Schema for SEO */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'FAQPage',
+              mainEntity: [
+                {
+                  '@type': 'Question',
+                  name: 'What is an ATS and why does it matter?',
+                  acceptedAnswer: {
+                    '@type': 'Answer',
+                    text: 'An Applicant Tracking System (ATS) is software used by employers to filter and rank job applications. Over 98% of Fortune 500 companies use an ATS, and about 75% of resumes are rejected before a human ever sees them. Optimizing your resume for ATS is crucial to getting past this first screening.',
+                  },
+                },
+                {
+                  '@type': 'Question',
+                  name: 'How does ParseFit scan my resume?',
+                  acceptedAnswer: {
+                    '@type': 'Answer',
+                    text: 'ParseFit analyzes your resume against the job description you provide. We extract keywords, check formatting compatibility, evaluate section structure, and compare your skills against job requirements. Our AI then provides a compatibility score and actionable suggestions to improve your resume.',
+                  },
+                },
+                {
+                  '@type': 'Question',
+                  name: 'What file formats are supported?',
+                  acceptedAnswer: {
+                    '@type': 'Answer',
+                    text: 'We support PDF and DOCX file formats, which are the most commonly accepted formats by ATS systems. We recommend using a simple, clean format without tables, columns, or graphics for best results.',
+                  },
+                },
+                {
+                  '@type': 'Question',
+                  name: 'Is my resume data secure?',
+                  acceptedAnswer: {
+                    '@type': 'Answer',
+                    text: 'Yes, your privacy is our priority. Your resume is processed securely and we do not store your resume content after analysis. All data transmission is encrypted using industry-standard protocols.',
+                  },
+                },
+                {
+                  '@type': 'Question',
+                  name: 'How many free scans do I get?',
+                  acceptedAnswer: {
+                    '@type': 'Answer',
+                    text: 'Free accounts include 3 resume scans per month. This resets at the beginning of each month. For unlimited scans and additional features, you can upgrade to our Pro plan.',
+                  },
+                },
+                {
+                  '@type': 'Question',
+                  name: 'What makes a good ATS score?',
+                  acceptedAnswer: {
+                    '@type': 'Answer',
+                    text: 'A score of 80 or above is generally considered good and means your resume is well-optimized for the job. Scores between 60-80 indicate room for improvement, while scores below 60 suggest significant changes are needed to pass ATS filters.',
+                  },
+                },
+              ],
+            }),
+          }}
+        />
+
+        {/* CTA Section */}
         <section className="border-t px-4 py-16 sm:px-6 lg:px-8 dark:border-gray-700">
           <div className="mx-auto max-w-4xl text-center">
             <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
@@ -250,5 +352,17 @@ function BenefitItem({ text }: { text: string }) {
       <CheckCircle2 className="h-5 w-5 flex-shrink-0 text-green-500" />
       <span className="font-medium text-gray-900 dark:text-white">{text}</span>
     </div>
+  );
+}
+
+function FAQItem({ question, answer }: { question: string; answer: string }) {
+  return (
+    <details className="group rounded-lg border bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
+      <summary className="flex cursor-pointer items-center justify-between font-medium text-gray-900 dark:text-white">
+        {question}
+        <ChevronDown className="h-5 w-5 text-gray-500 transition-transform group-open:rotate-180" />
+      </summary>
+      <p className="mt-4 text-gray-600 dark:text-gray-300">{answer}</p>
+    </details>
   );
 }
