@@ -125,6 +125,54 @@ function isLabelOnlyLine(line: string): boolean {
   return false;
 }
 
+// Check if a line looks like a continuation of the previous line (broken mid-sentence)
+function isContinuationLine(prevLine: string, currentLine: string): boolean {
+  if (!prevLine || !currentLine) return false;
+
+  // Previous line ends with hyphen (word break)
+  if (prevLine.endsWith('-') && /^[a-z]/.test(currentLine)) {
+    return true;
+  }
+
+  // Previous line ends mid-sentence (no punctuation, current starts lowercase)
+  if (!/[.!?:,;]$/.test(prevLine) && /^[a-z]/.test(currentLine)) {
+    return true;
+  }
+
+  return false;
+}
+
+// Merge continuation lines in an array (lines broken mid-word or mid-sentence)
+function mergeContinuationLines(lines: string[]): string[] {
+  if (lines.length <= 1) return lines;
+
+  const result: string[] = [];
+  let currentLine = lines[0];
+
+  for (let i = 1; i < lines.length; i++) {
+    const nextLine = lines[i];
+
+    // Check if current line (without bullet) ends mid-word/sentence
+    const currentContent = getBulletContent(currentLine).trim();
+    const nextContent = getBulletContent(nextLine).trim();
+
+    if (isContinuationLine(currentContent, nextContent)) {
+      // Merge: if ends with hyphen, remove it and join directly; otherwise join with space
+      if (currentContent.endsWith('-')) {
+        currentLine = currentLine.slice(0, -1) + nextContent;
+      } else {
+        currentLine = currentLine + ' ' + nextContent;
+      }
+    } else {
+      result.push(currentLine);
+      currentLine = nextLine;
+    }
+  }
+
+  result.push(currentLine);
+  return result;
+}
+
 // Extract date from a line
 function extractDate(line: string): string | null {
   // Match common date patterns
@@ -205,7 +253,11 @@ function parseContentIntoEntries(
 
   // For experience, education, projects - preserve blank lines as entry separators
   // Split content into groups separated by blank lines
-  const rawLines = content.split('\n').map(l => l.trim());
+  let rawLines = content.split('\n').map(l => l.trim());
+
+  // Merge continuation lines (lines broken mid-word or mid-sentence)
+  rawLines = mergeContinuationLines(rawLines);
+
   const entryGroups: string[][] = [];
   let currentGroup: string[] = [];
 
@@ -366,6 +418,11 @@ function parseContentIntoEntries(
     for (let i = 0; i < contentLines.length; i++) {
       const line = contentLines[i];
 
+      // Skip label-only lines like "Expected Graduation:"
+      if (isLabelOnlyLine(line)) {
+        continue;
+      }
+
       // Check if a bullet-formatted line is actually an entry header
       if (isBulletLine(line) && isBulletActuallyEntryHeader(line)) {
         // This bullet is actually a new entry - start new entry
@@ -454,6 +511,11 @@ function parseContentIntoEntries(
   let prevWasBlank = true;
 
   for (const line of contentLines) {
+    // Skip label-only lines like "Expected Graduation:"
+    if (isLabelOnlyLine(line)) {
+      continue;
+    }
+
     // Check if a bullet-formatted line is actually an entry header
     if (isBulletLine(line) && isBulletActuallyEntryHeader(line)) {
       // This bullet is actually a new entry - start new entry
