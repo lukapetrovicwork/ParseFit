@@ -28,16 +28,13 @@ export async function parsePDF(buffer: Buffer): Promise<PDFParseResult> {
     throw new Error(`Could not read this PDF file. Try re-exporting it from your word processor or PDF editor. (${errorMessage})`);
   }
 
-  // Post-process text to fix common PDF extraction issues
-  const processedText = postProcessPDFText(data.text);
-
   const hasImages = detectImages(data);
-  const hasTables = detectTables(processedText);
-  const hasColumns = detectColumns(processedText);
-  const hasHeadersFooters = detectHeadersFooters(processedText);
+  const hasTables = detectTables(data.text);
+  const hasColumns = detectColumns(data.text);
+  const hasHeadersFooters = detectHeadersFooters(data.text);
 
   return {
-    text: processedText,
+    text: data.text,
     metadata: {
       wordCount: countWords(data.text),
       lineCount: countLines(data.text),
@@ -158,64 +155,4 @@ function countWords(text: string): number {
 
 function countLines(text: string): number {
   return text.split('\n').filter(line => line.trim().length > 0).length;
-}
-
-/**
- * Post-process PDF extracted text to fix common issues:
- * - Merge hyphenated words split across lines (e.g., "context-\naware" -> "context-aware")
- * - Fix words that got concatenated without spaces
- * - Normalize whitespace
- */
-function postProcessPDFText(text: string): string {
-  const lines = text.split('\n');
-  const result: string[] = [];
-
-  for (let i = 0; i < lines.length; i++) {
-    let currentLine = lines[i];
-    const nextLine = lines[i + 1];
-
-    // Check if current line ends with a hyphen (word break)
-    if (currentLine.endsWith('-') && nextLine) {
-      const nextTrimmed = nextLine.trim();
-      // If next line starts with lowercase, it's a continuation of a hyphenated word
-      if (nextTrimmed && /^[a-z]/.test(nextTrimmed)) {
-        // Remove the hyphen and merge with next line
-        currentLine = currentLine.slice(0, -1) + nextTrimmed;
-        i++; // Skip the next line since we merged it
-      }
-    }
-
-    // Check if current line ends mid-word (no space/punctuation) and next starts lowercase
-    // This handles cases where PDF extraction drops line breaks incorrectly
-    if (nextLine && currentLine.length > 0) {
-      const lastChar = currentLine[currentLine.length - 1];
-      const nextTrimmed = nextLine.trim();
-
-      // If line ends with a letter and next line starts lowercase, might need merging
-      if (/[a-zA-Z]$/.test(currentLine) && nextTrimmed && /^[a-z]/.test(nextTrimmed)) {
-        // Check if it looks like a broken word (no punctuation at end)
-        if (!/[.!?,;:\s]$/.test(currentLine)) {
-          // Merge with a space
-          currentLine = currentLine + ' ' + nextTrimmed;
-          i++; // Skip the next line
-        }
-      }
-    }
-
-    result.push(currentLine);
-  }
-
-  // Additional cleanup: fix common concatenation issues
-  let processedText = result.join('\n');
-
-  // Fix bullet points that got merged with previous text (e.g., "text•" -> "text\n•")
-  processedText = processedText.replace(/([a-zA-Z.!?])([•\-\*])\s*/g, '$1\n$2 ');
-
-  // Normalize multiple spaces to single space (but preserve newlines)
-  processedText = processedText.replace(/[^\S\n]+/g, ' ');
-
-  // Normalize multiple newlines to max 2
-  processedText = processedText.replace(/\n{3,}/g, '\n\n');
-
-  return processedText.trim();
 }
