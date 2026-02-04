@@ -58,7 +58,7 @@
     /* Prevent horizontal scrolling on mobile */
     overflow-x: hidden;
     /* Always show vertical scrollbar to prevent layout shift when dialog opens */
-    overflow-y: scroll;
+    overflow-y: scroll !important;
   }
 
   body {
@@ -68,11 +68,18 @@
     max-width: 100vw;
   }
 
-  /* Prevent Radix UI dialog from causing layout shift */
-  /* When dialogs open, react-remove-scroll adds margin-right to body - override it */
+  /* Prevent Radix UI dialog from causing layout shift on PC */
+  /* When dialogs open, react-remove-scroll adds margin/padding to body - override it */
   body[data-scroll-locked] {
     margin-right: 0 !important;
+    padding-right: 0 !important;
     overflow: hidden !important;
+  }
+
+  /* Also prevent fixed elements from shifting */
+  body[data-scroll-locked] [data-radix-scroll-area-viewport] {
+    margin-right: 0 !important;
+    padding-right: 0 !important;
   }
 }
 
