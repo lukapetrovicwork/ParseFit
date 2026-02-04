@@ -104,30 +104,39 @@ function extractDate(line: string): string | null {
 }
 
 // Check if a line looks like an entry header (company name, project name, etc.)
-function looksLikeEntryHeader(line: string, prevLineWasBlank: boolean): boolean {
-  // After a blank line, shorter lines are more likely to be headers
+function looksLikeEntryHeader(line: string, prevLineWasBlank: boolean, sectionType?: string): boolean {
   const words = line.split(/\s+/);
 
   // Lines with dates are likely headers
   if (extractDate(line)) return true;
 
-  // After a blank line, be more generous
+  // After a blank line, shorter lines are more likely to be headers
   if (prevLineWasBlank) {
-    if (words.length <= 5 && line.length < 60) return true;
+    if (words.length <= 6 && line.length < 70) return true;
   }
 
-  // Very short lines (1-3 words) that look like titles
-  if (words.length <= 3 && line.length < 40) return true;
+  // Very short lines (1-4 words) that look like titles
+  if (words.length <= 4 && line.length < 50) return true;
 
   // Lines that are all caps might be headers
   const isAllCaps = line === line.toUpperCase() && /[A-Z]/.test(line) && line.length < 50;
   if (isAllCaps) return true;
 
-  // Lines ending with common company/org patterns
-  if (/\s+(Inc\.|LLC|Corp\.|Ltd\.|University|College|Co\.)$/i.test(line)) return true;
+  // Lines containing common company/org patterns (anywhere in line)
+  if (/\b(Inc\.|LLC|Corp\.|Ltd\.|University|College|Institute|School|Company|Technologies|Solutions)\b/i.test(line)) return true;
 
   // Lines with location patterns like "City, ST" or "City, State"
-  if (/,\s*[A-Z]{2}$/.test(line) && line.length < 60) return true;
+  if (/,\s*[A-Z]{2}(\s|$|,)/.test(line) && line.length < 70) return true;
+
+  // For education: lines starting with degree types
+  if (sectionType === 'education') {
+    if (/^(Bachelor|Master|Doctor|PhD|MBA|BS|BA|MS|MA|BBA|Associate|Diploma)/i.test(line)) return false; // Degree is subtitle, not new entry
+  }
+
+  // Lines that look like job titles (contains common title words)
+  if (/\b(Engineer|Developer|Manager|Director|Analyst|Designer|Lead|Senior|Junior|Intern|Specialist|Coordinator|Assistant|Associate|Consultant)\b/i.test(line) && words.length <= 6) {
+    return false; // Job titles are subtitles, not new entries
+  }
 
   return false;
 }
@@ -176,42 +185,61 @@ function parseContentIntoEntries(
     entryGroups.push(currentGroup);
   }
 
+  // Helper to parse a single entry group
+  const parseEntryGroup = (group: string[], bulletIdx: { value: number }): SectionEntry => {
+    const entry: SectionEntry = { bullets: [] };
+    let seenBullet = false;
+
+    for (const line of group) {
+      if (isBulletLine(line)) {
+        const bulletText = bulletIdx.value < bullets.length
+          ? bullets[bulletIdx.value++]
+          : line.replace(/^[•\-\*\u2022\u2023\u25E6\u2043\d+\.]\s*/, '');
+        entry.bullets.push(bulletText);
+        seenBullet = true;
+      } else {
+        const date = extractDate(line);
+        const lineWithoutDate = date ? line.replace(date, '').replace(/\s*[-–—|,]\s*$/, '').trim() : null;
+
+        if (!entry.title) {
+          // First line becomes title
+          if (date) {
+            entry.date = date;
+            entry.title = lineWithoutDate || '';
+          } else {
+            entry.title = line;
+          }
+        } else if (date && !entry.date) {
+          // Line with date - save date and remaining content
+          entry.date = date;
+          if (lineWithoutDate && lineWithoutDate.length > 0) {
+            if (!entry.subtitle && !seenBullet) {
+              entry.subtitle = lineWithoutDate;
+            } else {
+              entry.bullets.push(lineWithoutDate);
+            }
+          }
+        } else if (!entry.subtitle && !seenBullet && line.length < 80) {
+          // Second non-bullet line becomes subtitle
+          entry.subtitle = line;
+        } else {
+          // Everything else is content
+          entry.bullets.push(line);
+          seenBullet = true;
+        }
+      }
+    }
+
+    return entry;
+  };
+
   // If we got clear entry groups from blank lines, use them
   if (entryGroups.length > 1) {
     const entries: SectionEntry[] = [];
-    let bulletIndex = 0;
+    const bulletIdx = { value: 0 };
 
     for (const group of entryGroups) {
-      const entry: SectionEntry = { bullets: [] };
-      let seenBullet = false;
-
-      for (const line of group) {
-        if (isBulletLine(line)) {
-          const bulletText = bulletIndex < bullets.length
-            ? bullets[bulletIndex++]
-            : line.replace(/^[•\-\*\u2022\u2023\u25E6\u2043\d+\.]\s*/, '');
-          entry.bullets.push(bulletText);
-          seenBullet = true;
-        } else {
-          const date = extractDate(line);
-
-          if (!entry.title) {
-            entry.title = line;
-            if (date) {
-              entry.date = date;
-              entry.title = line.replace(date, '').replace(/\s*[-–—|,]\s*$/, '').trim();
-            }
-          } else if (date && !entry.date) {
-            entry.date = date;
-          } else if (!entry.subtitle && !seenBullet && line.length < 80) {
-            entry.subtitle = line;
-          } else {
-            entry.bullets.push(line);
-            seenBullet = true;
-          }
-        }
-      }
-
+      const entry = parseEntryGroup(group, bulletIdx);
       if (entry.title || entry.bullets.length > 0) {
         entries.push(entry);
       }
@@ -223,52 +251,97 @@ function parseContentIntoEntries(
   // No clear blank line separation - fall back to header detection
   const contentLines = rawLines.filter(l => l.length > 0);
 
+  // Helper to check if we should start a new entry
+  const shouldStartNewEntry = (
+    line: string,
+    currentEntry: SectionEntry,
+    hasContent: boolean,
+    prevWasBlank: boolean
+  ): boolean => {
+    // If current entry has content (bullets or subtitle), and this looks like a new header
+    if (!hasContent) return false;
+
+    // Check for company/institution patterns that indicate new entry
+    if (/\b(Inc\.|LLC|Corp\.|Ltd\.|University|College|Institute|School|Company|Technologies|Solutions)\b/i.test(line)) {
+      return true;
+    }
+
+    // Lines with location patterns often start new entries
+    if (/,\s*[A-Z]{2}(\s|$|,)/.test(line) && line.length < 70) {
+      return true;
+    }
+
+    // Short lines that look like company/org names (2-5 words, no common subtitle words)
+    const words = line.split(/\s+/);
+    if (words.length >= 2 && words.length <= 5 && line.length < 50) {
+      // But not if it looks like a job title or degree
+      if (!/\b(Engineer|Developer|Manager|Director|Bachelor|Master|PhD|MBA|Intern)\b/i.test(line)) {
+        return true;
+      }
+    }
+
+    return false;
+  };
+
   if (bullets.length > 0) {
     const entries: SectionEntry[] = [];
     let currentEntry: SectionEntry = { bullets: [] };
     let bulletIndex = 0;
-    let hasSeenBulletInCurrentEntry = false;
-    let prevWasBlank = true; // Start as if after blank
+    let hasContentInEntry = false;
+    let prevWasBlank = true;
 
     for (let i = 0; i < contentLines.length; i++) {
       const line = contentLines[i];
+      const date = extractDate(line);
+      const lineWithoutDate = date ? line.replace(date, '').replace(/\s*[-–—|,]\s*$/, '').trim() : null;
 
       if (isBulletLine(line)) {
         const bulletText = bulletIndex < bullets.length
           ? bullets[bulletIndex++]
           : line.replace(/^[•\-\*\u2022\u2023\u25E6\u2043\d+\.]\s*/, '');
         currentEntry.bullets.push(bulletText);
-        hasSeenBulletInCurrentEntry = true;
+        hasContentInEntry = true;
+        prevWasBlank = false;
+      } else if (shouldStartNewEntry(line, currentEntry, hasContentInEntry, prevWasBlank)) {
+        // Start new entry
+        if (currentEntry.title || currentEntry.bullets.length > 0) {
+          entries.push(currentEntry);
+        }
+        currentEntry = { bullets: [] };
+        hasContentInEntry = false;
+
+        if (date) {
+          currentEntry.date = date;
+          currentEntry.title = lineWithoutDate || '';
+        } else {
+          currentEntry.title = line;
+        }
+        prevWasBlank = false;
+      } else if (!currentEntry.title) {
+        if (date) {
+          currentEntry.date = date;
+          currentEntry.title = lineWithoutDate || '';
+        } else {
+          currentEntry.title = line;
+        }
+        prevWasBlank = false;
+      } else if (date && !currentEntry.date) {
+        currentEntry.date = date;
+        if (lineWithoutDate && lineWithoutDate.length > 0) {
+          if (!currentEntry.subtitle && !hasContentInEntry) {
+            currentEntry.subtitle = lineWithoutDate;
+          } else {
+            currentEntry.bullets.push(lineWithoutDate);
+            hasContentInEntry = true;
+          }
+        }
+        prevWasBlank = false;
+      } else if (!currentEntry.subtitle && !hasContentInEntry && line.length < 80) {
+        currentEntry.subtitle = line;
         prevWasBlank = false;
       } else {
-        const date = extractDate(line);
-        const isLikelyHeader = looksLikeEntryHeader(line, prevWasBlank);
-
-        if (!currentEntry.title) {
-          currentEntry.title = line;
-          if (date) {
-            currentEntry.date = date;
-            currentEntry.title = line.replace(date, '').replace(/\s*[-–—|,]\s*$/, '').trim();
-          }
-        } else if (date && !currentEntry.date) {
-          currentEntry.date = date;
-        } else if (!currentEntry.subtitle && !hasSeenBulletInCurrentEntry && line.length < 80) {
-          currentEntry.subtitle = line;
-        } else if (hasSeenBulletInCurrentEntry && isLikelyHeader) {
-          // New entry
-          if (currentEntry.title || currentEntry.bullets.length > 0) {
-            entries.push(currentEntry);
-          }
-          currentEntry = { title: line, bullets: [] };
-          hasSeenBulletInCurrentEntry = false;
-          if (date) {
-            currentEntry.date = date;
-            currentEntry.title = line.replace(date, '').replace(/\s*[-–—|,]\s*$/, '').trim();
-          }
-        } else {
-          currentEntry.bullets.push(line);
-          hasSeenBulletInCurrentEntry = true;
-        }
+        currentEntry.bullets.push(line);
+        hasContentInEntry = true;
         prevWasBlank = false;
       }
     }
@@ -283,47 +356,62 @@ function parseContentIntoEntries(
   // No pre-extracted bullets - simpler parsing
   const entries: SectionEntry[] = [];
   let currentEntry: SectionEntry | null = null;
-  let hasSeenBulletInCurrentEntry = false;
+  let hasContentInEntry = false;
   let prevWasBlank = true;
 
   for (const line of contentLines) {
+    const date = extractDate(line);
+    const lineWithoutDate = date ? line.replace(date, '').replace(/\s*[-–—|,]\s*$/, '').trim() : null;
+
     if (isBulletLine(line)) {
       const bulletText = line.replace(/^[•\-\*\u2022\u2023\u25E6\u2043\d+\.]\s*/, '');
       if (currentEntry) {
         currentEntry.bullets.push(bulletText);
-        hasSeenBulletInCurrentEntry = true;
+        hasContentInEntry = true;
       } else {
         currentEntry = { bullets: [bulletText] };
-        hasSeenBulletInCurrentEntry = true;
+        hasContentInEntry = true;
       }
       prevWasBlank = false;
-    } else {
-      const date = extractDate(line);
-      const isLikelyHeader = looksLikeEntryHeader(line, prevWasBlank);
+    } else if (currentEntry && shouldStartNewEntry(line, currentEntry, hasContentInEntry, prevWasBlank)) {
+      entries.push(currentEntry);
+      currentEntry = { bullets: [] };
+      hasContentInEntry = false;
 
-      if (!currentEntry) {
-        currentEntry = { title: line, bullets: [] };
-        hasSeenBulletInCurrentEntry = false;
-        if (date) {
-          currentEntry.date = date;
-          currentEntry.title = line.replace(date, '').replace(/\s*[-–—|,]\s*$/, '').trim();
-        }
-      } else if (hasSeenBulletInCurrentEntry && isLikelyHeader) {
-        entries.push(currentEntry);
-        currentEntry = { title: line, bullets: [] };
-        hasSeenBulletInCurrentEntry = false;
-        if (date) {
-          currentEntry.date = date;
-          currentEntry.title = line.replace(date, '').replace(/\s*[-–—|,]\s*$/, '').trim();
-        }
-      } else if (date && !currentEntry.date) {
+      if (date) {
         currentEntry.date = date;
-      } else if (!currentEntry.subtitle && !hasSeenBulletInCurrentEntry && line.length < 60) {
-        currentEntry.subtitle = line;
+        currentEntry.title = lineWithoutDate || '';
       } else {
-        currentEntry.bullets.push(line);
-        hasSeenBulletInCurrentEntry = true;
+        currentEntry.title = line;
       }
+      prevWasBlank = false;
+    } else if (!currentEntry) {
+      currentEntry = { bullets: [] };
+      hasContentInEntry = false;
+      if (date) {
+        currentEntry.date = date;
+        currentEntry.title = lineWithoutDate || '';
+      } else {
+        currentEntry.title = line;
+      }
+      prevWasBlank = false;
+    } else if (date && !currentEntry.date) {
+      currentEntry.date = date;
+      if (lineWithoutDate && lineWithoutDate.length > 0) {
+        if (!currentEntry.subtitle && !hasContentInEntry) {
+          currentEntry.subtitle = lineWithoutDate;
+        } else {
+          currentEntry.bullets.push(lineWithoutDate);
+          hasContentInEntry = true;
+        }
+      }
+      prevWasBlank = false;
+    } else if (!currentEntry.subtitle && !hasContentInEntry && line.length < 60) {
+      currentEntry.subtitle = line;
+      prevWasBlank = false;
+    } else {
+      currentEntry.bullets.push(line);
+      hasContentInEntry = true;
       prevWasBlank = false;
     }
   }
