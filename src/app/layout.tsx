@@ -9,20 +9,76 @@ import './globals.css';
 
 const inter = Inter({ subsets: ['latin'] });
 
+const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://parsefit.com';
+
 export const metadata: Metadata = {
-  title: 'ParseFit - Optimize Your Resume for ATS',
+  metadataBase: new URL(baseUrl),
+  title: {
+    default: 'ParseFit - ATS Resume Scanner & Optimizer',
+    template: '%s | ParseFit',
+  },
   description:
     'Get your resume past Applicant Tracking Systems. Upload your resume and job description to receive instant ATS compatibility scoring, missing keywords, and actionable improvement suggestions.',
   keywords: [
     'ATS scanner',
-    'resume checker',
+    'ATS resume checker',
+    'resume optimizer',
     'applicant tracking system',
     'resume optimization',
     'job application',
     'keyword matching',
     'resume analysis',
+    'resume score',
+    'ATS friendly resume',
+    'resume keywords',
+    'job search tools',
     'ParseFit',
   ],
+  authors: [{ name: 'ParseFit' }],
+  creator: 'ParseFit',
+  publisher: 'ParseFit',
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
+  openGraph: {
+    type: 'website',
+    locale: 'en_US',
+    url: baseUrl,
+    siteName: 'ParseFit',
+    title: 'ParseFit - ATS Resume Scanner & Optimizer',
+    description:
+      'Get your resume past Applicant Tracking Systems. Instant ATS scoring, keyword analysis, and actionable suggestions to land more interviews.',
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'ParseFit - ATS Resume Scanner',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'ParseFit - ATS Resume Scanner & Optimizer',
+    description:
+      'Get your resume past Applicant Tracking Systems. Instant ATS scoring, keyword analysis, and actionable suggestions.',
+    images: ['/og-image.png'],
+    creator: '@parsefit',
+  },
+  verification: {
+    google: process.env.GOOGLE_SITE_VERIFICATION,
+  },
+  alternates: {
+    canonical: baseUrl,
+  },
 };
 
 export default function RootLayout({

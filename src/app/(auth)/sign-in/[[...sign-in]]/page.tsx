@@ -1,4 +1,14 @@
 import { SignIn } from '@clerk/nextjs';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Sign In',
+  description: 'Sign in to ParseFit to scan your resume for ATS compatibility and get personalized improvement suggestions.',
+  robots: {
+    index: false,
+    follow: true,
+  },
+};
 
 export default function SignInPage() {
   return (

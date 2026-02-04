@@ -11,6 +11,16 @@ import {
   ArrowRight,
   Star,
 } from 'lucide-react';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'ParseFit - Free ATS Resume Scanner & Optimizer | Beat Applicant Tracking Systems',
+  description:
+    'Get your resume past Applicant Tracking Systems with ParseFit. Upload your resume and job description to receive instant ATS compatibility scoring, missing keywords analysis, and AI-powered suggestions to land more interviews.',
+  alternates: {
+    canonical: '/',
+  },
+};
 
 export default function HomePage() {
   return (
