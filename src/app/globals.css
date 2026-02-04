@@ -53,8 +53,17 @@
   * {
     @apply border-border;
   }
+
+  html {
+    /* Prevent horizontal scrolling on mobile */
+    overflow-x: hidden;
+  }
+
   body {
     @apply bg-background text-foreground;
+    /* Prevent horizontal scrolling and ensure content fits viewport */
+    overflow-x: hidden;
+    max-width: 100vw;
   }
 }
 

@@ -170,15 +170,17 @@ export default function ScanDetailPage() {
       </div>
 
       <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="keywords">Keywords</TabsTrigger>
-          <TabsTrigger value="feedback">Feedback</TabsTrigger>
-          <TabsTrigger value="suggestions">Suggestions</TabsTrigger>
-          <TabsTrigger value="optimize" className="gap-1">
-            Optimize
-          </TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+          <TabsList className="inline-flex w-auto min-w-full sm:grid sm:w-full sm:grid-cols-5">
+            <TabsTrigger value="overview" className="flex-shrink-0 px-3 text-xs sm:text-sm">Overview</TabsTrigger>
+            <TabsTrigger value="keywords" className="flex-shrink-0 px-3 text-xs sm:text-sm">Keywords</TabsTrigger>
+            <TabsTrigger value="feedback" className="flex-shrink-0 px-3 text-xs sm:text-sm">Feedback</TabsTrigger>
+            <TabsTrigger value="suggestions" className="flex-shrink-0 px-3 text-xs sm:text-sm">Tips</TabsTrigger>
+            <TabsTrigger value="optimize" className="flex-shrink-0 px-3 text-xs sm:text-sm">
+              Optimize
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="overview">
           <ScoreDisplay score={scan.score} />

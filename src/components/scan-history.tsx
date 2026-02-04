@@ -67,21 +67,24 @@ export function ScanHistory({ scans, onDelete }: ScanHistoryProps) {
         {scans.map((scan) => (
           <Card key={scan.id} className="transition-shadow hover:shadow-md">
             <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
+              {/* Mobile layout: stacked */}
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                {/* Score circle and file info */}
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
                     <span className={`text-lg font-bold ${getScoreColor(scan.overallScore)}`}>
                       {scan.overallScore}
                     </span>
                   </div>
-                  <div>
-                    <h3 className="font-medium">{scan.fileName}</h3>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="font-medium truncate">{scan.fileName}</h3>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
                       {formatDate(scan.createdAt)} • Keywords: {scan.keywordScore}%
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                {/* Actions - full width on mobile, inline on desktop */}
+                <div className="flex items-center justify-between gap-2 sm:justify-end">
                   <Badge
                     variant={
                       scan.overallScore >= 80
@@ -90,23 +93,26 @@ export function ScanHistory({ scans, onDelete }: ScanHistoryProps) {
                         ? 'warning'
                         : 'error'
                     }
+                    className="flex-shrink-0"
                   >
                     {scan.overallScore >= 80 ? 'Excellent' : scan.overallScore >= 60 ? 'Good' : 'Needs Work'}
                   </Badge>
-                  <Link href={`/scan/${scan.id}`}>
-                    <Button variant="outline" size="sm">
-                      <ExternalLink className="mr-1 h-4 w-4" />
-                      View
+                  <div className="flex items-center gap-2">
+                    <Link href={`/scan/${scan.id}`}>
+                      <Button variant="outline" size="sm">
+                        <ExternalLink className="mr-1 h-4 w-4" />
+                        View
+                      </Button>
+                    </Link>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setDeleteId(scan.id)}
+                      className="flex-shrink-0 text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950 dark:hover:text-red-300"
+                    >
+                      <Trash2 className="h-4 w-4" />
                     </Button>
-                  </Link>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setDeleteId(scan.id)}
-                    className="text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950 dark:hover:text-red-300"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  </div>
                 </div>
               </div>
               {scan.jobDescription && (
