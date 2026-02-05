@@ -73,6 +73,17 @@ export const metadata: Metadata = {
     images: ['/og-image.png'],
     creator: '@parsefit',
   },
+  icons: {
+    icon: [
+      { url: '/favicon-48x48.png', sizes: '48x48', type: 'image/png' },
+      { url: '/icon-192x192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icon-512x512.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
+  },
+  manifest: '/manifest.json',
   verification: {
     google: process.env.GOOGLE_SITE_VERIFICATION,
   },
