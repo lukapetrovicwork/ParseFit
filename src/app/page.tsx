@@ -15,7 +15,7 @@ import {
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Free ATS Resume Scanner & Checker – Check If Your Resume Passes ATS | ParseFit',
+  title: 'ParseFit – Free ATS Resume Scanner & Checker',
   description:
     'Free ATS resume scanner and resume checker. Upload your resume to instantly check Applicant Tracking System compatibility, find missing keywords, and get AI-powered suggestions to pass ATS filters and land more interviews.',
   alternates: {
