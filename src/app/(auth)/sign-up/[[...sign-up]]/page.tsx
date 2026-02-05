@@ -4,6 +4,9 @@ import type { Metadata } from 'next';
 export const metadata: Metadata = {
   title: 'Sign Up - Start Your Free ATS Resume Scan',
   description: 'Create a free ParseFit account to scan your resume for ATS compatibility. Get 3 free scans per month with instant feedback and keyword analysis.',
+  alternates: {
+    canonical: '/sign-up',
+  },
 };
 
 export default function SignUpPage() {
