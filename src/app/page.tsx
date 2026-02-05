@@ -15,9 +15,9 @@ import {
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'ParseFit - Free ATS Resume Scanner & Optimizer | Beat Applicant Tracking Systems',
+  title: 'Free ATS Resume Scanner & Checker – Check If Your Resume Passes ATS | ParseFit',
   description:
-    'Get your resume past Applicant Tracking Systems with ParseFit. Upload your resume and job description to receive instant ATS compatibility scoring, missing keywords analysis, and AI-powered suggestions to land more interviews.',
+    'Free ATS resume scanner and resume checker. Upload your resume to instantly check Applicant Tracking System compatibility, find missing keywords, and get AI-powered suggestions to pass ATS filters and land more interviews.',
   alternates: {
     canonical: '/',
   },
@@ -41,14 +41,14 @@ export default function HomePage() {
             </div>
 
             <h1 className="text-4xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-5xl lg:text-6xl">
-              Get Your Resume Past{' '}
-              <span className="text-primary">ATS Systems</span>
+              Free ATS Resume Scanner{' '}
+              <span className="text-primary">& Resume Checker</span>
             </h1>
 
             <p className="mx-auto mt-6 max-w-2xl text-lg text-gray-600 dark:text-gray-300">
-              Upload your resume and job description to instantly see your ATS
-              compatibility score, missing keywords, and get actionable suggestions
-              to land more interviews.
+              Check if your resume passes Applicant Tracking Systems. Our free ATS
+              resume scanner analyzes your resume against the job description to find
+              missing keywords and give you actionable suggestions to land more interviews.
             </p>
 
             <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
