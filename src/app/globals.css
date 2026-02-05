@@ -69,17 +69,14 @@
   }
 
   /* Prevent Radix UI dialog from causing layout shift on PC */
-  /* When dialogs open, react-remove-scroll adds margin/padding to body - override it */
-  body[data-scroll-locked] {
+  /* react-remove-scroll-bar injects a <style> tag with body[data-scroll-locked] { margin-right: Xpx !important } */
+  /* Using higher specificity (html body = 0-1-2) to beat the library's selector (body = 0-1-1) */
+  html body[data-scroll-locked] {
     margin-right: 0 !important;
     padding-right: 0 !important;
+    margin-left: 0 !important;
+    padding-left: 0 !important;
     overflow: hidden !important;
-  }
-
-  /* Also prevent fixed elements from shifting */
-  body[data-scroll-locked] [data-radix-scroll-area-viewport] {
-    margin-right: 0 !important;
-    padding-right: 0 !important;
   }
 }
 
